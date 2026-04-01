@@ -198,7 +198,17 @@ def health_report():
 
 class AppHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        SimpleHTTPRequestHandler.__init__(self, *args, directory=str(ROOT), **kwargs)
+        SimpleHTTPRequestHandler.__init__(self, *args, **kwargs)
+
+    def translate_path(self, path):
+        # Python 3.6 does not support the "directory=" argument in handler init.
+        # Keep static-file root locked to project ROOT.
+        path = path.split("?", 1)[0].split("#", 1)[0]
+        parts = [p for p in path.split("/") if p and p not in (".", "..")]
+        target = ROOT
+        for part in parts:
+            target = target / part
+        return str(target)
 
     def _send_json(self, status_code, body, with_body=True):
         raw = json.dumps(body, ensure_ascii=False).encode("utf-8")

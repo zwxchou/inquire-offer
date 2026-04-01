@@ -42,8 +42,8 @@ jobs:
           else
             printf '%s' "${KEY_INPUT}" | base64 -d > ~/.ssh/id_deploy
           fi
-          ssh-keygen -y -f ~/.ssh/id_deploy >/dev/null
           chmod 600 ~/.ssh/id_deploy
+          ssh-keygen -y -f ~/.ssh/id_deploy >/dev/null
 
       - name: Add known_hosts
         run: |

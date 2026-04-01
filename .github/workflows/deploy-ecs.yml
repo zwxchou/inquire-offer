@@ -52,11 +52,23 @@ jobs:
           fi
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Verify SSH connectivity
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "${ECS_USER}@${ECS_HOST}" \
+            "echo SSH_OK && whoami && hostname"
+
       - name: Deploy on ECS
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes "${ECS_USER}@${ECS_HOST}" << 'EOF'
             set -euo pipefail
+            test -d /opt/sales-app/app
+            test -f /opt/sales-app/app/deploy/linux/release.sh
             cd /opt/sales-app/app
             sudo bash deploy/linux/release.sh main
           EOF

@@ -180,7 +180,10 @@ def health_report() -> dict:
         ensure_backup_dirs()
         probe = LATEST_DIR / ".writable_probe"
         probe.write_text("ok", encoding="utf-8")
-        probe.unlink(missing_ok=True)
+        try:
+            probe.unlink()
+        except FileNotFoundError:
+            pass
     except Exception as exc:
         backup_ok = False
         backup_error = str(exc)
@@ -199,13 +202,14 @@ class AppHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
-    def _send_json(self, status: int, body: dict) -> None:
+    def _send_json(self, status: int, body: dict, with_body: bool = True) -> None:
         raw = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
-        self.wfile.write(raw)
+        if with_body:
+            self.wfile.write(raw)
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -218,6 +222,18 @@ class AppHandler(SimpleHTTPRequestHandler):
             self._send_json(status, report)
             return
         return super().do_GET()
+
+    def do_HEAD(self):
+        path = urlparse(self.path).path
+        if path == "/api/state":
+            self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state_from_db()}, with_body=False)
+            return
+        if path == "/healthz":
+            report = health_report()
+            status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
+            self._send_json(status, report, with_body=False)
+            return
+        return super().do_HEAD()
 
     def do_PUT(self):
         path = urlparse(self.path).path

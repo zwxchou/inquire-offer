@@ -29,7 +29,7 @@ CARD_DIR = ROOT / "customer_cards"
 
 
 def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=5)
+    conn = sqlite3.connect(str(DB_PATH), timeout=5)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")

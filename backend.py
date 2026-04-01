@@ -7,7 +7,14 @@ import time
 import base64
 from datetime import datetime, timedelta
 from http import HTTPStatus
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+try:
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+except ImportError:
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    from socketserver import ThreadingMixIn
+
+    class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+        daemon_threads = True
 from pathlib import Path
 from urllib.parse import urlparse
 

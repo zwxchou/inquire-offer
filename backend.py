@@ -1,12 +1,16 @@
+import base64
 import json
 import os
 import shutil
 import sqlite3
 import threading
 import time
-import base64
+import traceback
 from datetime import datetime, timedelta
 from http import HTTPStatus
+from pathlib import Path
+from urllib.parse import urlparse
+
 try:
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 except ImportError:
@@ -15,8 +19,6 @@ except ImportError:
 
     class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
         daemon_threads = True
-from pathlib import Path
-from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parent
@@ -28,7 +30,13 @@ LATEST_DIR = BACKUP_DIR / "latest"
 CARD_DIR = ROOT / "customer_cards"
 
 
-def get_conn() -> sqlite3.Connection:
+def ensure_dirs():
+    for d in (BACKUP_DIR, DAILY_DIR, LATEST_DIR, CARD_DIR):
+        if not d.exists():
+            d.mkdir(parents=True)
+
+
+def get_conn():
     conn = sqlite3.connect(str(DB_PATH), timeout=5)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
@@ -36,7 +44,7 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
-def init_db() -> None:
+def init_db():
     conn = get_conn()
     try:
         conn.execute(
@@ -53,7 +61,7 @@ def init_db() -> None:
         conn.close()
 
 
-def load_state_from_db() -> dict:
+def load_state():
     conn = get_conn()
     try:
         row = conn.execute("SELECT data FROM app_state WHERE key = ?", (STATE_KEY,)).fetchone()
@@ -61,14 +69,24 @@ def load_state_from_db() -> dict:
             return {}
         try:
             return json.loads(row[0])
-        except json.JSONDecodeError:
+        except Exception:
             return {}
     finally:
         conn.close()
 
 
-def save_state_to_db(data: dict) -> None:
-    payload = json.dumps(data, ensure_ascii=False)
+def _backup_latest():
+    ensure_dirs()
+    state = load_state()
+    (LATEST_DIR / "state_latest.json").write_text(
+        json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    if DB_PATH.exists():
+        shutil.copy2(str(DB_PATH), str(LATEST_DIR / "sales_latest.db"))
+
+
+def save_state(state):
+    payload = json.dumps(state, ensure_ascii=False)
     conn = get_conn()
     try:
         conn.execute("BEGIN")
@@ -85,85 +103,65 @@ def save_state_to_db(data: dict) -> None:
         conn.commit()
     finally:
         conn.close()
-    backup_latest_snapshot()
+    _backup_latest()
 
 
-def ensure_backup_dirs() -> None:
-    DAILY_DIR.mkdir(parents=True, exist_ok=True)
-    LATEST_DIR.mkdir(parents=True, exist_ok=True)
+def backup_daily():
+    ensure_dirs()
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    state = load_state()
+    json_path = DAILY_DIR / ("state_%s.json" % stamp)
+    db_path = DAILY_DIR / ("sales_%s.db" % stamp)
+    json_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    if DB_PATH.exists():
+        shutil.copy2(str(DB_PATH), str(db_path))
+    return str(json_path)
 
 
-def ensure_card_dir() -> None:
-    CARD_DIR.mkdir(parents=True, exist_ok=True)
+def backup_scheduler():
+    while True:
+        now = datetime.now()
+        next_run = now.replace(hour=18, minute=15, second=0, microsecond=0)
+        if now >= next_run:
+            next_run = next_run + timedelta(days=1)
+        sleep_seconds = int((next_run - now).total_seconds())
+        if sleep_seconds < 1:
+            sleep_seconds = 1
+        time.sleep(sleep_seconds)
+        try:
+            out = backup_daily()
+            print("[backup-daily] created:", out)
+        except Exception as exc:
+            print("[backup-daily] failed:", exc)
+            traceback.print_exc()
 
 
-def save_card_image(customer_id: str, filename: str, content_b64: str) -> str:
-    ensure_card_dir()
+def save_card_image(customer_id, filename, content_b64):
+    ensure_dirs()
     raw_name = (filename or "").strip().lower()
     ext = ".jpg"
     for allowed in (".png", ".jpg", ".jpeg", ".webp"):
         if raw_name.endswith(allowed):
             ext = allowed
             break
-    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
-        raise ValueError("unsupported image type")
-    safe_customer = "".join(ch for ch in (customer_id or "CUNKNOWN") if ch.isalnum() or ch in ("_", "-"))[:40] or "CUNKNOWN"
+    safe_customer = "".join(ch for ch in (customer_id or "CUNKNOWN") if ch.isalnum() or ch in ("_", "-"))
+    if not safe_customer:
+        safe_customer = "CUNKNOWN"
+    safe_customer = safe_customer[:40]
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    final_name = f"{safe_customer}_{stamp}{ext}"
+    final_name = "%s_%s%s" % (safe_customer, stamp, ext)
     target = CARD_DIR / final_name
     try:
         data = base64.b64decode(content_b64, validate=True)
-    except Exception as exc:
-        raise ValueError("invalid base64 image content") from exc
+    except Exception:
+        raise ValueError("invalid base64 image content")
     if len(data) > 8 * 1024 * 1024:
         raise ValueError("image too large (max 8MB)")
     target.write_bytes(data)
-    return f"/customer_cards/{final_name}"
+    return "/customer_cards/%s" % final_name
 
 
-def _write_snapshot(target_dir: Path, stamp: str) -> Path:
-    state = load_state_from_db()
-    json_path = target_dir / f"state_{stamp}.json"
-    db_path = target_dir / f"sales_{stamp}.db"
-    json_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    if DB_PATH.exists():
-        shutil.copy2(DB_PATH, db_path)
-    return json_path
-
-
-def backup_latest_snapshot() -> None:
-    ensure_backup_dirs()
-    state = load_state_from_db()
-    (LATEST_DIR / "state_latest.json").write_text(
-        json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    if DB_PATH.exists():
-        shutil.copy2(DB_PATH, LATEST_DIR / "sales_latest.db")
-
-
-def backup_daily() -> Path:
-    ensure_backup_dirs()
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return _write_snapshot(DAILY_DIR, stamp)
-
-
-def run_daily_backup_scheduler() -> None:
-    # Runs daily at 18:15 local time.
-    while True:
-        now = datetime.now()
-        next_run = now.replace(hour=18, minute=15, second=0, microsecond=0)
-        if now >= next_run:
-            next_run = next_run + timedelta(days=1)
-        wait_seconds = max(1, int((next_run - now).total_seconds()))
-        time.sleep(wait_seconds)
-        try:
-            out = backup_daily()
-            print(f"[backup-daily] created: {out}")
-        except Exception as exc:
-            print(f"[backup-daily] failed: {exc}")
-
-
-def health_report() -> dict:
+def health_report():
     db_ok = True
     db_error = ""
     try:
@@ -177,12 +175,12 @@ def health_report() -> dict:
     backup_ok = True
     backup_error = ""
     try:
-        ensure_backup_dirs()
+        ensure_dirs()
         probe = LATEST_DIR / ".writable_probe"
         probe.write_text("ok", encoding="utf-8")
         try:
             probe.unlink()
-        except FileNotFoundError:
+        except Exception:
             pass
     except Exception as exc:
         backup_ok = False
@@ -200,72 +198,90 @@ def health_report() -> dict:
 
 class AppHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(ROOT), **kwargs)
+        SimpleHTTPRequestHandler.__init__(self, *args, directory=str(ROOT), **kwargs)
 
-    def _send_json(self, status: int, body: dict, with_body: bool = True) -> None:
+    def _send_json(self, status_code, body, with_body=True):
         raw = json.dumps(body, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
+        self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         if with_body:
             self.wfile.write(raw)
 
+    def _safe(self, fn):
+        try:
+            fn()
+        except Exception as exc:
+            print("[handler-error]", exc)
+            traceback.print_exc()
+            try:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            except Exception:
+                pass
+
     def do_GET(self):
-        path = urlparse(self.path).path
-        if path == "/api/state":
-            self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state_from_db()})
-            return
-        if path == "/healthz":
-            report = health_report()
-            status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
-            self._send_json(status, report)
-            return
-        return super().do_GET()
+        def run():
+            path = urlparse(self.path).path
+            if path == "/api/state":
+                self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()})
+                return
+            if path == "/healthz":
+                report = health_report()
+                status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
+                self._send_json(status, report)
+                return
+            SimpleHTTPRequestHandler.do_GET(self)
+
+        self._safe(run)
 
     def do_HEAD(self):
-        path = urlparse(self.path).path
-        if path == "/api/state":
-            self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state_from_db()}, with_body=False)
-            return
-        if path == "/healthz":
-            report = health_report()
-            status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
-            self._send_json(status, report, with_body=False)
-            return
-        return super().do_HEAD()
+        def run():
+            path = urlparse(self.path).path
+            if path == "/api/state":
+                self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()}, with_body=False)
+                return
+            if path == "/healthz":
+                report = health_report()
+                status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
+                self._send_json(status, report, with_body=False)
+                return
+            SimpleHTTPRequestHandler.do_HEAD(self)
+
+        self._safe(run)
 
     def do_PUT(self):
-        path = urlparse(self.path).path
-        if path != "/api/state":
-            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
-            return
-        try:
+        def run():
+            path = urlparse(self.path).path
+            if path != "/api/state":
+                self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+                return
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("state must be object")
-            # Protection: avoid accidental full wipe with {} when DB already has data.
+
             if payload == {}:
-                existing = load_state_from_db()
+                existing = load_state()
                 if existing:
                     self._send_json(
                         HTTPStatus.CONFLICT,
                         {"ok": False, "error": "refuse to overwrite non-empty state with empty object"},
                     )
                     return
-            save_state_to_db(payload)
+
+            save_state(payload)
             self._send_json(HTTPStatus.OK, {"ok": True})
-        except Exception as exc:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+
+        self._safe(run)
 
     def do_POST(self):
-        path = urlparse(self.path).path
-        if path != "/api/upload-card":
-            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
-            return
-        try:
+        def run():
+            path = urlparse(self.path).path
+            if path != "/api/upload-card":
+                self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+                return
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
@@ -282,28 +298,27 @@ class AppHandler(SimpleHTTPRequestHandler):
                 raise ValueError("contentBase64 required")
             image_path = save_card_image(customer_id, filename, content_b64)
             self._send_json(HTTPStatus.OK, {"ok": True, "imagePath": image_path})
-        except Exception as exc:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+
+        self._safe(run)
 
     def do_OPTIONS(self):
         self.send_response(HTTPStatus.NO_CONTENT)
-        self.send_header("Allow", "GET,PUT,POST,OPTIONS")
+        self.send_header("Allow", "GET,PUT,POST,OPTIONS,HEAD")
         self.end_headers()
 
-    def log_message(self, fmt: str, *args) -> None:
-        # Disable default logging to avoid potential reverse-DNS stalls.
+    def log_message(self, fmt, *args):
         return
 
 
-def main() -> None:
-    port = int(os.environ.get("SALES_PORT", "5173"))
+def main():
+    ensure_dirs()
     init_db()
-    ensure_backup_dirs()
-    ensure_card_dir()
-    backup_latest_snapshot()
-    threading.Thread(target=run_daily_backup_scheduler, daemon=True).start()
+    _backup_latest()
+    threading.Thread(target=backup_scheduler, daemon=True).start()
+
+    port = int(os.environ.get("SALES_PORT", "5173"))
     server = ThreadingHTTPServer(("0.0.0.0", port), AppHandler)
-    print(f"Serving on http://127.0.0.1:{port}")
+    print("Serving on http://127.0.0.1:%s" % port)
     server.serve_forever()
 
 

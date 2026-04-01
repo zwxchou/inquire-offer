@@ -1,0 +1,22 @@
+[Unit]
+Description=Sales Quote Match App (Python + SQLite)
+After=network.target
+
+[Service]
+Type=simple
+User=salesapp
+Group=salesapp
+WorkingDirectory=/opt/sales-app/app
+Environment=SALES_PORT=5173
+Environment=TZ=Asia/Shanghai
+ExecStart=/usr/bin/python3 /opt/sales-app/app/backend.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/sales-app/app
+
+[Install]
+WantedBy=multi-user.target
+

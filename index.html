@@ -1,0 +1,2989 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报价与采购匹配系统</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --line: #dbe3ef;
+      --text: #10233f;
+      --muted: #5a6f8f;
+      --ok: #1f9d62;
+      --warn: #dd7a00;
+      --bad: #c0392b;
+      --brand: #1d4ed8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: clamp(15px, 0.9vw, 19px);
+      background: linear-gradient(135deg, #eef4ff, #f8fbff 35%, #fdfefe);
+      color: var(--text);
+    }
+
+    .wrap {
+      width: calc(100vw - 48px);
+      max-width: 1880px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .main {
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 6px 18px rgba(15, 45, 90, 0.06);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      grid-column: span 3;
+    }
+
+    .field.wide { grid-column: span 4; }
+    .field.full { grid-column: span 12; }
+
+    label {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #9bb8ff;
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+      grid-column: span 12;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: #fff;
+      background: var(--brand);
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.secondary {
+      background: #4b607e;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 8px;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      background: #f8fbff;
+      position: sticky;
+      top: 0;
+    }
+    th[draggable="true"] {
+      cursor: move;
+      user-select: none;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .pill.ok { color: var(--ok); border-color: #9de4bf; background: #ecfcf3; }
+    .pill.warn { color: var(--warn); border-color: #ffd19c; background: #fff7ec; }
+    .pill.bad { color: var(--bad); border-color: #f0b0aa; background: #fff1f0; }
+
+    .muted { color: var(--muted); }
+    .scroll { overflow: auto; max-height: 360px; }
+    .sidebar { position: sticky; top: 20px; }
+    .menu {
+      display: grid;
+      gap: 8px;
+    }
+    .menu button {
+      width: 100%;
+      text-align: left;
+      background: #e9f0ff;
+      color: #244067;
+      border: 1px solid #cfdcf5;
+    }
+    .menu button.active {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+    .menu-group-title {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 6px 8px 2px;
+      border-bottom: 1px dashed var(--line);
+      margin-top: 4px;
+    }
+    .menu-sub {
+      padding-left: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .close-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      background: #4b607e;
+    }
+    .demand-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1.5fr auto;
+      gap: 8px;
+    }
+    .offer-row {
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr auto;
+      gap: 8px;
+    }
+    .demand-row input {
+      width: 100%;
+    }
+    .offer-row input {
+      width: 100%;
+    }
+    .sales-query-edit td {
+      white-space: nowrap;
+      vertical-align: middle;
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+    .sales-query-edit input,
+    .sales-query-edit select {
+      height: 30px;
+      min-width: 86px;
+      padding: 4px 6px;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .sales-query-edit button {
+      padding: 5px 10px;
+      font-size: 13px;
+    }
+    .row-offer-price {
+      background: #fff6da;
+    }
+    .row-both-price {
+      background: #eafaf1;
+    }
+
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .field, .field.wide { grid-column: span 6; }
+      .demand-row { grid-template-columns: 1fr; }
+      .offer-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      body { padding: 12px; }
+      .field, .field.wide, .field.full { grid-column: span 12; }
+      .actions { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body data-module="sales-demand">
+  <div id="healthBanner" style="display:none; position: sticky; top: 0; z-index: 9999; background: #c0392b; color: #fff; padding: 10px 14px; font-size: 14px;">
+    <span id="healthBannerText">后端连接异常，部分操作可能无法保存。</span>
+    <button id="healthReconnectBtn" type="button" style="margin-left: 12px; background:#fff; color:#c0392b; border:none; border-radius:6px; padding:5px 10px; cursor:pointer;">一键重连</button>
+  </div>
+  <div class="wrap">
+    <aside class="card sidebar">
+      <h2>功能菜单</h2>
+      <div class="menu">
+        <button id="menuSalesDashboard" type="button">销售数据看板</button>
+        <button id="menuSalesDemand" type="button" class="active">销售需求</button>
+        <button id="menuSalesDemandQuery" type="button">销售需求查询</button>
+        <button id="menuDemandList" type="button">需求列表与匹配结果</button>
+        <div class="menu-group-title">Offer</div>
+        <div class="menu-sub">
+          <button id="menuOfferEntry" type="button">Offer录入</button>
+          <button id="menuOfferDetail" type="button">Offer明细查询</button>
+          <button id="menuOfferMaster" type="button">Offer主数据</button>
+        </div>
+        <button id="menuCustomer" type="button">客户主数据</button>
+        <button id="menuModelSeries" type="button">型号系列主数据</button>
+      </div>
+    </aside>
+
+    <div class="main">
+    <div class="card">
+      <h1>报价与采购匹配系统</h1>
+      <div class="sub">规则：按同型号的最新录入时间取价格；录入时间精确到分钟；需求满足后可关闭。</div>
+    </div>
+
+    <div class="card module-sales" data-module-card="sales-dashboard">
+      <h2>销售数据看板</h2>
+      <div class="grid" style="margin-bottom: 8px;">
+        <div class="field">
+          <label>开始时间</label>
+          <input id="dashboardStart" type="datetime-local" />
+        </div>
+        <div class="field">
+          <label>结束时间</label>
+          <input id="dashboardEnd" type="datetime-local" />
+        </div>
+        <div class="actions">
+          <button id="clearDashboardFilterBtn" type="button" class="secondary">清空日期筛选</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="field">
+          <label>询价次数</label>
+          <input id="dashboardInquiryCount" readonly />
+        </div>
+        <div class="field">
+          <label>料号去重数量</label>
+          <input id="dashboardUniqueModelCount" readonly />
+        </div>
+        <div class="field">
+          <label>有offer的料号数</label>
+          <input id="dashboardHasOfferModelCount" readonly />
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <label>按天统计柱状图（蓝=询价次数，绿=有offer次数）</label>
+        <canvas id="dashboardBarCanvas" height="240" style="width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff;"></canvas>
+      </div>
+      <div class="scroll" style="margin-top: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>录入时间(分)</th>
+              <th>客户</th>
+              <th>型号</th>
+              <th>询盘类型</th>
+              <th>是否库存</th>
+              <th>最新offer价格</th>
+              <th>是否有offer</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardDetailTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card module-customer" data-module-card="customer">
+      <h2>客户主数据维护</h2>
+      <form id="customerForm" class="grid">
+        <input id="customerEditId" type="hidden" />
+        <div class="field">
+          <label>客户名称</label>
+          <input id="customerName" required />
+        </div>
+        <div class="field">
+          <label>客户类型</label>
+          <input id="customerType" placeholder="经销商/终端等" />
+        </div>
+        <div class="field">
+          <label>客户窗口</label>
+          <input id="customerWindow" placeholder="例如：采购窗口A/研发窗口B" />
+        </div>
+        <div class="field wide">
+          <label>产品线</label>
+          <input id="customerProductLine" placeholder="品牌和产品类型" />
+        </div>
+        <div class="field">
+          <label>沟通渠道</label>
+          <input id="customerChannel" />
+        </div>
+        <div class="field">
+          <label>跟进人</label>
+          <input id="customerOwner" />
+        </div>
+        <div class="field">
+          <label>客户联系人</label>
+          <input id="customerContact" />
+        </div>
+        <div class="field">
+          <label>联系方式</label>
+          <input id="customerPhone" />
+        </div>
+        <div class="field wide">
+          <label>客户特性描述</label>
+          <input id="customerTrait" placeholder="例如：价格敏感、交期优先、偏好原厂等" />
+        </div>
+        <div class="field">
+          <label>邮箱</label>
+          <input id="customerEmail" />
+        </div>
+        <div class="field wide">
+          <label>客户办公地址</label>
+          <input id="customerAddress" />
+        </div>
+        <div class="field">
+          <label>官网</label>
+          <input id="customerWebsite" />
+        </div>
+        <div class="field">
+          <label>所属区域</label>
+          <input id="customerRegion" />
+        </div>
+        <div class="field">
+          <label>是否成交</label>
+          <select id="customerHasDeal">
+            <option value="">未知</option>
+            <option value="是">是</option>
+            <option value="否">否</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>名片图片</label>
+          <input id="customerCardFile" type="file" accept="image/*" />
+          <input id="customerCardPath" type="hidden" />
+          <div class="actions" style="grid-column: span 12; padding-top: 4px;">
+            <button id="customerCardUploadBtn" type="button" class="secondary">上传名片</button>
+            <span id="customerCardUploadStatus" class="muted">未上传</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="customerSubmitBtn" type="submit">新增客户</button>
+          <button id="customerCancelEditBtn" type="button" class="secondary" style="display:none;">取消编辑</button>
+        </div>
+      </form>
+      <div class="grid" style="margin-top: 8px;">
+        <div class="field full">
+          <label>导入客户主数据（Excel/CSV）</label>
+          <input id="customerFile" type="file" accept=".xlsx,.xls,.csv" />
+        </div>
+        <div class="actions">
+          <button id="importCustomerBtn" type="button" class="secondary">导入文件</button>
+        </div>
+      </div>
+      <div class="grid" style="margin-top: 8px;">
+        <div class="field">
+          <label>按客户名称筛选（模糊）</label>
+          <input id="customerFilterName" placeholder="输入名称关键字" />
+        </div>
+        <div class="actions">
+          <button id="clearCustomerFilterBtn" type="button" class="secondary">清空筛选</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>客户名称</th>
+              <th>窗口</th>
+              <th>客户类型</th>
+              <th>产品线</th>
+              <th>沟通渠道</th>
+              <th>跟进人</th>
+              <th>联系人</th>
+              <th>联系方式</th>
+              <th>客户特性描述</th>
+              <th>邮箱</th>
+              <th>办公地址</th>
+              <th>官网</th>
+              <th>所属区域</th>
+              <th>是否成交</th>
+              <th>名片</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="customerTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card module-offer" data-module-card="offer-master">
+      <h2>Offer主数据维护</h2>
+      <form id="offerMasterForm" class="grid">
+        <div class="field">
+          <label>Offer人</label>
+          <input id="offerMasterName" required />
+        </div>
+        <div class="actions">
+          <button type="submit">新增Offer人</button>
+        </div>
+      </form>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Offer人</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="offerMasterTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card module-sales" data-module-card="sales-demand">
+      <h2>需求录入（销售）</h2>
+      <form id="demandForm" class="grid">
+        <div class="field">
+          <label>型号</label>
+          <input id="demandModel" required />
+        </div>
+        <div class="field">
+          <label>数量</label>
+          <input id="demandQty" type="number" min="0" />
+        </div>
+        <div class="field">
+          <label>TP（最高可出价）</label>
+          <input id="demandTp" type="number" min="0" step="0.0001" />
+        </div>
+        <div class="field">
+          <label>客户</label>
+          <input id="demandCustomer" list="customerList" />
+          <datalist id="customerList"></datalist>
+        </div>
+        <div class="field">
+          <label>系列</label>
+          <input id="demandSeries" list="seriesList" />
+          <datalist id="seriesList"></datalist>
+        </div>
+        <div class="field wide">
+          <label>物料信息</label>
+          <input id="demandMaterialInfo" placeholder="DC 交期" />
+        </div>
+        <div class="field full">
+          <label>更多型号需求（可选）</label>
+          <div id="extraDemandRows" style="display:grid; gap:8px;"></div>
+          <div style="margin-top:8px;">
+            <button id="addDemandRowBtn" type="button" class="secondary">添加更多型号</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>是否长期需求</label>
+          <select id="demandLongTerm">
+            <option value="false">否</option>
+            <option value="true">是</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>询盘类型</label>
+          <select id="demandInquiryType">
+            <option value="normal">普通询盘</option>
+            <option value="key">重点询盘</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>是否库存</label>
+          <select id="demandStockType">
+            <option value="non_stock">非库存</option>
+            <option value="stock">库存</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button type="submit">新增需求</button>
+          <button id="clearDataBtn" type="button" class="secondary">清空演示数据</button>
+        </div>
+        <div class="field full">
+          <label>需求文本（新增需求后自动生成）</label>
+          <textarea id="demandGeneratedText" rows="4" readonly placeholder="新增需求后，这里会自动生成 INQ 文本"></textarea>
+        </div>
+      </form>
+    </div>
+
+    <div class="card module-sales" data-module-card="sales-demand-query">
+      <h2>销售需求查询（共 <span id="salesQueryCount">0</span> 条）</h2>
+      <div class="grid" style="margin-bottom: 12px;">
+        <div class="field">
+          <label>按客户筛选</label>
+          <input id="salesQueryCustomer" list="customerList" placeholder="输入客户关键字" />
+        </div>
+        <div class="field">
+          <label>按型号筛选</label>
+          <input id="salesQueryModel" placeholder="输入型号关键字" />
+        </div>
+        <div class="field">
+          <label>开始时间</label>
+          <input id="salesQueryStart" type="datetime-local" />
+        </div>
+        <div class="field">
+          <label>结束时间</label>
+          <input id="salesQueryEnd" type="datetime-local" />
+        </div>
+        <div class="actions">
+          <button id="clearSalesQueryBtn" type="button" class="secondary">清空筛选</button>
+        </div>
+      </div>
+      <div id="salesQueryEditPanel" class="card" style="display:none; position: fixed; right: 20px; top: 72px; width: 440px; max-height: 82vh; overflow: auto; z-index: 1000; box-shadow: 0 10px 24px rgba(18,33,68,.18);">
+        <h3 style="margin-top:0;">编辑销售需求</h3>
+        <div class="sub" id="sqeTitle">ID: -</div>
+        <div class="grid">
+          <div class="field">
+            <label>型号</label>
+            <input id="sqeModel" />
+          </div>
+          <div class="field">
+            <label>客户</label>
+            <input id="sqeCustomer" list="customerList" />
+          </div>
+          <div class="field">
+            <label>系列</label>
+            <input id="sqeSeries" list="seriesList" />
+          </div>
+          <div class="field">
+            <label>物料信息</label>
+            <input id="sqeMaterialInfo" />
+          </div>
+          <div class="field">
+            <label>需求数量</label>
+            <input id="sqeQuantity" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label>TP</label>
+            <input id="sqeTp" type="number" min="0" step="0.0001" />
+          </div>
+          <div class="field">
+            <label>询盘类型</label>
+            <select id="sqeInquiryType">
+              <option value="normal">普通询盘</option>
+              <option value="key">重点询盘</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>是否库存</label>
+            <select id="sqeStockType">
+              <option value="non_stock">非库存</option>
+              <option value="stock">库存</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>长期标签</label>
+            <select id="sqeLongTerm">
+              <option value="false">否</option>
+              <option value="true">是</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>关闭状态</label>
+            <select id="sqeClosed">
+              <option value="false">未关闭</option>
+              <option value="true">已关闭</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="sqeSaveBtn" type="button">保存</button>
+          <button id="sqeCancelBtn" type="button" class="secondary">取消</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr id="salesQueryHeaderRow"></tr>
+          </thead>
+          <tbody id="salesQueryTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card module-sales" data-module-card="offer-entry">
+      <h2>Offer录入</h2>
+      <form id="purchaseForm" class="grid">
+        <div class="field">
+          <label>型号</label>
+          <input id="purchaseModel" required />
+        </div>
+        <div class="field">
+          <label>系列</label>
+          <input id="purchaseSeries" list="seriesList" />
+        </div>
+        <div class="field wide">
+          <label>物料信息</label>
+          <input id="purchaseMaterialInfo" />
+        </div>
+        <div class="field">
+          <label>Offer数量</label>
+          <input id="purchaseQty" type="number" min="0" />
+        </div>
+        <div class="field">
+          <label>Offer单价</label>
+          <input id="purchasePrice" type="number" min="0" step="0.0001" />
+        </div>
+        <div class="field full">
+          <label>更多Offer型号（可选）</label>
+          <div id="extraOfferRows" style="display:grid; gap:8px;"></div>
+          <div style="margin-top:8px;">
+            <button id="addOfferRowBtn" type="button" class="secondary">添加更多型号</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Offer</label>
+          <input id="purchaseOffer" />
+        </div>
+        <div class="field">
+          <label>Offer人</label>
+          <input id="purchaseOfferPerson" list="offerPersonList" />
+          <datalist id="offerPersonList"></datalist>
+        </div>
+        <div class="field">
+          <label>是否库存</label>
+          <select id="purchaseStockType">
+            <option value="non_stock" selected>非库存</option>
+            <option value="stock">库存</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button type="submit">新增Offer</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card module-sales" data-module-card="demand-list">
+      <h2>需求列表与匹配结果</h2>
+      <div class="grid" style="margin-bottom: 12px;">
+        <div class="field">
+          <label>按型号筛选</label>
+          <input id="demandFilterModel" placeholder="输入型号关键字" />
+        </div>
+        <div class="field">
+          <label>按客户筛选</label>
+          <input id="demandFilterCustomer" list="customerList" placeholder="输入客户关键字" />
+        </div>
+        <div class="field">
+          <label>开始时间</label>
+          <input id="demandFilterStart" type="datetime-local" />
+        </div>
+        <div class="field">
+          <label>结束时间</label>
+          <input id="demandFilterEnd" type="datetime-local" />
+        </div>
+        <div class="actions">
+          <button id="clearDemandFilterBtn" type="button" class="secondary">清空筛选</button>
+        </div>
+      </div>
+      <h3 style="margin: 0 0 8px 0;">库存需求（共 <span id="demandStockCount">0</span> 条；有offer价 <span id="demandStockHasOfferCount">0</span> 条；无offer价 <span id="demandStockNoOfferCount">0</span> 条）</h3>
+      <div class="scroll" style="margin-bottom: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>录入时间(分)</th>
+              <th>客户</th>
+              <th>型号</th>
+              <th>系列</th>
+              <th>物料信息</th>
+              <th>需求数量</th>
+              <th>TP</th>
+              <th>询盘类型</th>
+              <th>是否库存</th>
+              <th>长期标签</th>
+              <th>匹配状态</th>
+              <th>最新offer价格</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="demandStockTbody"></tbody>
+        </table>
+      </div>
+      <h3 style="margin: 0 0 8px 0;">非库存需求（共 <span id="demandNonStockCount">0</span> 条；有offer价 <span id="demandNonStockHasOfferCount">0</span> 条；无offer价 <span id="demandNonStockNoOfferCount">0</span> 条）</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>录入时间(分)</th>
+              <th>客户</th>
+              <th>型号</th>
+              <th>系列</th>
+              <th>物料信息</th>
+              <th>需求数量</th>
+              <th>TP</th>
+              <th>询盘类型</th>
+              <th>是否库存</th>
+              <th>长期标签</th>
+              <th>匹配状态</th>
+              <th>最新offer价格</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="demandNonStockTbody"></tbody>
+        </table>
+      </div>
+      <div class="grid" style="margin-top: 12px;">
+        <div class="actions">
+          <button id="genStockTextBtn" type="button">生成库存需求文本</button>
+          <button id="genNonStockTextBtn" type="button" class="secondary">生成非库存需求文本</button>
+        </div>
+        <div class="field full">
+          <label>库存需求文本</label>
+          <textarea id="stockDemandText" rows="3" readonly placeholder="点击“生成库存需求文本”后显示"></textarea>
+        </div>
+        <div class="field full">
+          <label>非库存需求文本</label>
+          <textarea id="nonStockDemandText" rows="3" readonly placeholder="点击“生成非库存需求文本”后显示"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card module-sales" data-module-card="offer-query">
+      <h2>Offer列表</h2>
+      <div class="grid" style="margin-bottom: 8px;">
+        <div class="field">
+          <label>按型号搜索历史Offer</label>
+          <input id="offerModelSearch" placeholder="输入型号关键字，例如 K3KL1L10GM" />
+        </div>
+        <div class="field">
+          <label>走势图型号</label>
+          <input id="offerTrendModelInput" placeholder="输入型号后显示价格走势图" />
+        </div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr id="offerQueryHeaderRow"></tr>
+          </thead>
+          <tbody id="purchaseTbody"></tbody>
+        </table>
+      </div>
+      <div id="offerTrendWrap" style="margin-top: 12px; display:none;">
+        <label>该型号历史价格走势图</label>
+        <canvas id="offerTrendCanvas" height="220" style="width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff;"></canvas>
+      </div>
+    </div>
+
+    <div class="card module-model-series" data-module-card="model-series">
+      <h2>型号系列主数据</h2>
+      <form id="modelSeriesForm" class="grid">
+        <div class="field">
+          <label>型号</label>
+          <input id="msModel" required />
+        </div>
+        <div class="field">
+          <label>系列</label>
+          <input id="msSeries" required />
+        </div>
+        <div class="actions">
+          <button type="submit">新增关系</button>
+        </div>
+      </form>
+      <div class="grid" style="margin-top: 8px;">
+        <div class="field">
+          <label>按型号筛选（模糊）</label>
+          <input id="modelSeriesFilterModel" placeholder="输入型号关键字" />
+        </div>
+        <div class="field">
+          <label>按系列筛选（模糊）</label>
+          <input id="modelSeriesFilterSeries" placeholder="输入系列关键字" />
+        </div>
+        <div class="actions">
+          <button id="clearModelSeriesFilterBtn" type="button" class="secondary">清空筛选</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>型号</th>
+              <th>系列</th>
+              <th>来源</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="modelSeriesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <script src="./customer_seed.js"></script>
+  <script src="./series_seed.js"></script>
+  <script src="./model_series_seed.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const storeKey = 'quote_procurement_system_v1';
+
+    const state = loadState();
+    let editingSalesDemandId = null;
+    const salesQueryColumns = [
+      { key: 'id', label: 'ID' },
+      { key: 'createdAt', label: '录入时间(分)' },
+      { key: 'customer', label: '客户' },
+      { key: 'model', label: '型号' },
+      { key: 'series', label: '系列' },
+      { key: 'materialInfo', label: '物料信息' },
+      { key: 'quantity', label: '需求数量' },
+      { key: 'tp', label: 'TP' },
+      { key: 'inquiryType', label: '询盘类型' },
+      { key: 'stockType', label: '是否库存' },
+      { key: 'longTerm', label: '长期标签' },
+      { key: 'closed', label: '关闭状态' },
+      { key: 'latestOffer', label: '最新offer价格' },
+      { key: 'action', label: '操作' }
+    ];
+    const offerQueryColumns = [
+      { key: 'id', label: 'ID' },
+      { key: 'createdAt', label: '录入时间(分)' },
+      { key: 'model', label: '型号' },
+      { key: 'series', label: '系列' },
+      { key: 'materialInfo', label: '物料信息' },
+      { key: 'quantity', label: 'Offer数量' },
+      { key: 'unitPrice', label: 'Offer单价' },
+      { key: 'offer', label: 'Offer' },
+      { key: 'offerPerson', label: 'Offer人' },
+      { key: 'stockType', label: '是否库存' },
+      { key: 'action', label: '操作' }
+    ];
+    let salesQueryColOrder = [];
+    let offerQueryColOrder = [];
+
+    const customerForm = document.getElementById('customerForm');
+    const customerEditId = document.getElementById('customerEditId');
+    const customerSubmitBtn = document.getElementById('customerSubmitBtn');
+    const customerCancelEditBtn = document.getElementById('customerCancelEditBtn');
+    const healthBanner = document.getElementById('healthBanner');
+    const healthBannerText = document.getElementById('healthBannerText');
+    const healthReconnectBtn = document.getElementById('healthReconnectBtn');
+    const offerMasterForm = document.getElementById('offerMasterForm');
+    const modelSeriesForm = document.getElementById('modelSeriesForm');
+    const menuSalesDashboardBtn = document.getElementById('menuSalesDashboard');
+    const menuSalesDemandBtn = document.getElementById('menuSalesDemand');
+    const menuSalesDemandQueryBtn = document.getElementById('menuSalesDemandQuery');
+    const menuDemandListBtn = document.getElementById('menuDemandList');
+    const menuOfferEntryBtn = document.getElementById('menuOfferEntry');
+    const menuOfferDetailBtn = document.getElementById('menuOfferDetail');
+    const menuCustomerBtn = document.getElementById('menuCustomer');
+    const menuOfferMasterBtn = document.getElementById('menuOfferMaster');
+    const menuModelSeriesBtn = document.getElementById('menuModelSeries');
+    const customerTbody = document.getElementById('customerTbody');
+    const offerMasterTbody = document.getElementById('offerMasterTbody');
+    const modelSeriesTbody = document.getElementById('modelSeriesTbody');
+    const modelSeriesFilterModel = document.getElementById('modelSeriesFilterModel');
+    const modelSeriesFilterSeries = document.getElementById('modelSeriesFilterSeries');
+    const clearModelSeriesFilterBtn = document.getElementById('clearModelSeriesFilterBtn');
+    const customerFile = document.getElementById('customerFile');
+    const importCustomerBtn = document.getElementById('importCustomerBtn');
+    const customerFilterName = document.getElementById('customerFilterName');
+    const clearCustomerFilterBtn = document.getElementById('clearCustomerFilterBtn');
+    const customerCardFile = document.getElementById('customerCardFile');
+    const customerCardPath = document.getElementById('customerCardPath');
+    const customerCardUploadBtn = document.getElementById('customerCardUploadBtn');
+    const customerCardUploadStatus = document.getElementById('customerCardUploadStatus');
+    const customerList = document.getElementById('customerList');
+    const offerPersonList = document.getElementById('offerPersonList');
+    const offerModelSearch = document.getElementById('offerModelSearch');
+    const offerTrendModelInput = document.getElementById('offerTrendModelInput');
+    const offerTrendWrap = document.getElementById('offerTrendWrap');
+    const seriesList = document.getElementById('seriesList');
+    const demandModelInput = document.getElementById('demandModel');
+    const demandSeriesInput = document.getElementById('demandSeries');
+    const addDemandRowBtn = document.getElementById('addDemandRowBtn');
+    const extraDemandRows = document.getElementById('extraDemandRows');
+    const purchaseModelInput = document.getElementById('purchaseModel');
+    const purchaseSeriesInput = document.getElementById('purchaseSeries');
+    const addOfferRowBtn = document.getElementById('addOfferRowBtn');
+    const extraOfferRows = document.getElementById('extraOfferRows');
+    const demandForm = document.getElementById('demandForm');
+    const salesQueryCustomer = document.getElementById('salesQueryCustomer');
+    const salesQueryModel = document.getElementById('salesQueryModel');
+    const salesQueryStart = document.getElementById('salesQueryStart');
+    const salesQueryEnd = document.getElementById('salesQueryEnd');
+    const clearSalesQueryBtn = document.getElementById('clearSalesQueryBtn');
+    const salesQueryCount = document.getElementById('salesQueryCount');
+    const salesQueryHeaderRow = document.getElementById('salesQueryHeaderRow');
+    const salesQueryTbody = document.getElementById('salesQueryTbody');
+    const salesQueryEditPanel = document.getElementById('salesQueryEditPanel');
+    const sqeTitle = document.getElementById('sqeTitle');
+    const sqeModel = document.getElementById('sqeModel');
+    const sqeCustomer = document.getElementById('sqeCustomer');
+    const sqeSeries = document.getElementById('sqeSeries');
+    const sqeMaterialInfo = document.getElementById('sqeMaterialInfo');
+    const sqeQuantity = document.getElementById('sqeQuantity');
+    const sqeTp = document.getElementById('sqeTp');
+    const sqeInquiryType = document.getElementById('sqeInquiryType');
+    const sqeStockType = document.getElementById('sqeStockType');
+    const sqeLongTerm = document.getElementById('sqeLongTerm');
+    const sqeClosed = document.getElementById('sqeClosed');
+    const sqeSaveBtn = document.getElementById('sqeSaveBtn');
+    const sqeCancelBtn = document.getElementById('sqeCancelBtn');
+    const dashboardStart = document.getElementById('dashboardStart');
+    const dashboardEnd = document.getElementById('dashboardEnd');
+    const clearDashboardFilterBtn = document.getElementById('clearDashboardFilterBtn');
+    const dashboardInquiryCount = document.getElementById('dashboardInquiryCount');
+    const dashboardUniqueModelCount = document.getElementById('dashboardUniqueModelCount');
+    const dashboardHasOfferModelCount = document.getElementById('dashboardHasOfferModelCount');
+    const dashboardBarCanvas = document.getElementById('dashboardBarCanvas');
+    const dashboardDetailTbody = document.getElementById('dashboardDetailTbody');
+    const demandGeneratedText = document.getElementById('demandGeneratedText');
+    const genStockTextBtn = document.getElementById('genStockTextBtn');
+    const genNonStockTextBtn = document.getElementById('genNonStockTextBtn');
+    const stockDemandText = document.getElementById('stockDemandText');
+    const nonStockDemandText = document.getElementById('nonStockDemandText');
+    const demandFilterModel = document.getElementById('demandFilterModel');
+    const demandFilterCustomer = document.getElementById('demandFilterCustomer');
+    const demandFilterStart = document.getElementById('demandFilterStart');
+    const demandFilterEnd = document.getElementById('demandFilterEnd');
+    const clearDemandFilterBtn = document.getElementById('clearDemandFilterBtn');
+    const purchaseForm = document.getElementById('purchaseForm');
+    const demandStockTbody = document.getElementById('demandStockTbody');
+    const demandNonStockTbody = document.getElementById('demandNonStockTbody');
+    const demandStockCount = document.getElementById('demandStockCount');
+    const demandNonStockCount = document.getElementById('demandNonStockCount');
+    const demandStockHasOfferCount = document.getElementById('demandStockHasOfferCount');
+    const demandStockNoOfferCount = document.getElementById('demandStockNoOfferCount');
+    const demandNonStockHasOfferCount = document.getElementById('demandNonStockHasOfferCount');
+    const demandNonStockNoOfferCount = document.getElementById('demandNonStockNoOfferCount');
+    const purchaseTbody = document.getElementById('purchaseTbody');
+    const offerQueryHeaderRow = document.getElementById('offerQueryHeaderRow');
+    const purchaseStockType = document.getElementById('purchaseStockType');
+    const clearDataBtn = document.getElementById('clearDataBtn');
+    const offerTrendCanvas = document.getElementById('offerTrendCanvas');
+
+    salesQueryColOrder = loadColumnOrder('salesQueryColOrderV1', salesQueryColumns.map((x) => x.key));
+    offerQueryColOrder = loadColumnOrder('offerQueryColOrderV1', offerQueryColumns.map((x) => x.key));
+
+    setModuleView('sales-demand');
+    menuSalesDashboardBtn.addEventListener('click', () => setModuleView('sales-dashboard'));
+    menuSalesDemandBtn.addEventListener('click', () => setModuleView('sales-demand'));
+    menuSalesDemandQueryBtn.addEventListener('click', () => setModuleView('sales-demand-query'));
+    menuDemandListBtn.addEventListener('click', () => setModuleView('demand-list'));
+    menuOfferEntryBtn.addEventListener('click', () => setModuleView('offer-entry'));
+    menuOfferDetailBtn.addEventListener('click', () => setModuleView('offer-query'));
+    menuCustomerBtn.addEventListener('click', () => setModuleView('customer'));
+    menuOfferMasterBtn.addEventListener('click', () => setModuleView('offer-master'));
+    menuModelSeriesBtn.addEventListener('click', () => setModuleView('model-series'));
+    demandModelInput.addEventListener('input', () => autoFillSeriesByModel(demandModelInput, demandSeriesInput));
+    demandModelInput.addEventListener('change', () => autoFillSeriesByModel(demandModelInput, demandSeriesInput));
+    demandModelInput.addEventListener('blur', () => autoFillSeriesByModel(demandModelInput, demandSeriesInput));
+    purchaseModelInput.addEventListener('input', () => autoFillSeriesByModel(purchaseModelInput, purchaseSeriesInput));
+    purchaseModelInput.addEventListener('change', () => autoFillSeriesByModel(purchaseModelInput, purchaseSeriesInput));
+    purchaseModelInput.addEventListener('blur', () => autoFillSeriesByModel(purchaseModelInput, purchaseSeriesInput));
+    addOfferRowBtn.addEventListener('click', () => addExtraOfferRow());
+    offerModelSearch.addEventListener('input', () => render());
+    offerTrendModelInput.addEventListener('input', () => render());
+    dashboardStart.addEventListener('change', () => render());
+    dashboardEnd.addEventListener('change', () => render());
+    clearDashboardFilterBtn.addEventListener('click', () => {
+      dashboardStart.value = '';
+      dashboardEnd.value = '';
+      render();
+    });
+    salesQueryCustomer.addEventListener('input', () => render());
+    salesQueryModel.addEventListener('input', () => render());
+    salesQueryStart.addEventListener('change', () => render());
+    salesQueryEnd.addEventListener('change', () => render());
+    clearSalesQueryBtn.addEventListener('click', () => {
+      salesQueryCustomer.value = '';
+      salesQueryModel.value = '';
+      salesQueryStart.value = '';
+      salesQueryEnd.value = '';
+      render();
+    });
+    modelSeriesFilterModel.addEventListener('input', () => render());
+    modelSeriesFilterSeries.addEventListener('input', () => render());
+    clearModelSeriesFilterBtn.addEventListener('click', () => {
+      modelSeriesFilterModel.value = '';
+      modelSeriesFilterSeries.value = '';
+      render();
+    });
+    customerFilterName.addEventListener('input', () => render());
+    clearCustomerFilterBtn.addEventListener('click', () => {
+      customerFilterName.value = '';
+      render();
+    });
+    customerCardFile.addEventListener('change', () => {
+      customerCardPath.value = '';
+      customerCardUploadStatus.textContent = customerCardFile.files && customerCardFile.files[0] ? '未上传（已选择新文件）' : '未上传';
+    });
+    customerCardUploadBtn.addEventListener('click', async () => {
+      const file = customerCardFile.files && customerCardFile.files[0];
+      if (!file) {
+        alert('请先选择名片图片。');
+        return;
+      }
+      const customerName = String(document.getElementById('customerName').value || '').trim();
+      const customerWindow = String(document.getElementById('customerWindow').value || '').trim();
+      if (!customerName) {
+        alert('请先填写客户名称，再上传名片。');
+        return;
+      }
+      const editingId = String(customerEditId.value || '').trim();
+      const existing = editingId
+        ? state.customers.find((x) => x.id === editingId)
+        : state.customers.find((x) => x.name === customerName && String(x.window || '') === customerWindow);
+      const provisionalId = existing ? existing.id : `TMP_${customerName.replace(/\W+/g, '').slice(0, 24) || 'CUSTOMER'}`;
+      try {
+        customerCardUploadStatus.textContent = '上传中...';
+        const imagePath = await uploadCustomerCard(provisionalId, file);
+        customerCardPath.value = imagePath;
+        customerCardUploadStatus.textContent = `已上传：${imagePath}`;
+      } catch (err) {
+        customerCardUploadStatus.textContent = '上传失败';
+        alert(`名片上传失败：${err.message || err}`);
+      }
+    });
+    customerCancelEditBtn.addEventListener('click', () => {
+      resetCustomerFormMode();
+    });
+    sqeSaveBtn.addEventListener('click', () => saveEditedDemand(editingSalesDemandId));
+    sqeCancelBtn.addEventListener('click', () => {
+      editingSalesDemandId = null;
+      salesQueryEditPanel.style.display = 'none';
+    });
+    genStockTextBtn.addEventListener('click', () => {
+      stockDemandText.value = buildDemandListTextByStockType('stock');
+    });
+    genNonStockTextBtn.addEventListener('click', () => {
+      nonStockDemandText.value = buildDemandListTextByStockType('non_stock');
+    });
+    demandFilterModel.addEventListener('input', () => render());
+    demandFilterCustomer.addEventListener('input', () => render());
+    demandFilterStart.addEventListener('change', () => render());
+    demandFilterEnd.addEventListener('change', () => render());
+    clearDemandFilterBtn.addEventListener('click', () => {
+      demandFilterModel.value = '';
+      demandFilterCustomer.value = '';
+      demandFilterStart.value = '';
+      demandFilterEnd.value = '';
+      render();
+    });
+    healthReconnectBtn.addEventListener('click', async () => {
+      healthBannerText.textContent = '正在重连后端...';
+      const ok = await checkBackendHealth();
+      if (ok) {
+        setBackendHealthy(true);
+        render();
+      } else {
+        setBackendHealthy(false, '重连失败，请确认服务已启动（start.ps1）。');
+      }
+    });
+    startHealthPolling();
+    addDemandRowBtn.addEventListener('click', () => addExtraDemandRow());
+
+    customerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('customerName').value.trim();
+      const windowText = document.getElementById('customerWindow').value.trim();
+      if (!name) {
+        alert('客户名称必填。');
+        return;
+      }
+      const editingId = String(customerEditId.value || '').trim();
+      const existingById = editingId ? state.customers.find((x) => x.id === editingId) : null;
+      const existingByNameWindow = state.customers.find((x) => x.name === name && String(x.window || '') === windowText);
+      const existing = existingById || existingByNameWindow;
+      const customerId = existing ? existing.id : nextId('C');
+      let cardImagePath = String(customerCardPath.value || '').trim();
+      const cardFile = customerCardFile.files && customerCardFile.files[0];
+      if (!cardImagePath && cardFile) {
+        try {
+          customerCardUploadStatus.textContent = '保存前上传中...';
+          cardImagePath = await uploadCustomerCard(customerId, cardFile);
+          customerCardPath.value = cardImagePath;
+          customerCardUploadStatus.textContent = `已上传：${cardImagePath}`;
+        } catch (err) {
+          customerCardUploadStatus.textContent = '上传失败';
+          alert(`名片上传失败：${err.message || err}`);
+          return;
+        }
+      }
+      const customer = normalizeCustomer({
+        id: customerId,
+        name,
+        window: windowText,
+        type: document.getElementById('customerType').value.trim(),
+        productLine: document.getElementById('customerProductLine').value.trim(),
+        channel: document.getElementById('customerChannel').value.trim(),
+        owner: document.getElementById('customerOwner').value.trim(),
+        contactName: document.getElementById('customerContact').value.trim(),
+        contactPhone: document.getElementById('customerPhone').value.trim(),
+        trait: document.getElementById('customerTrait').value.trim(),
+        email: document.getElementById('customerEmail').value.trim(),
+        officeAddress: document.getElementById('customerAddress').value.trim(),
+        website: document.getElementById('customerWebsite').value.trim(),
+        region: document.getElementById('customerRegion').value.trim(),
+        hasDeal: document.getElementById('customerHasDeal').value.trim(),
+        cardImage: cardImagePath
+      });
+      if (existing) {
+        Object.assign(existing, customer, { id: existing.id });
+      } else {
+        state.customers.unshift(customer);
+      }
+
+      persistAndRender();
+      resetCustomerFormMode();
+    });
+
+    offerMasterForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('offerMasterName').value.trim();
+      if (!name) {
+        alert('Offer人必填。');
+        return;
+      }
+      const existing = state.offerPersons.find((x) => x.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        alert('该Offer人已存在。');
+        return;
+      }
+      state.offerPersons.unshift({ id: nextId('O'), name });
+      persistAndRender();
+      offerMasterForm.reset();
+    });
+
+    modelSeriesForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const model = document.getElementById('msModel').value.trim();
+      const series = document.getElementById('msSeries').value.trim();
+      if (!model || !series) {
+        alert('型号和系列都必填。');
+        return;
+      }
+      upsertModelSeries(model, series, 'manual');
+      persistAndRender();
+      modelSeriesForm.reset();
+    });
+
+    importCustomerBtn.addEventListener('click', async () => {
+      const file = customerFile.files && customerFile.files[0];
+      if (!file) {
+        alert('请先选择 Excel 或 CSV 文件。');
+        return;
+      }
+
+      try {
+        const imported = await parseCustomerFile(file);
+        if (!imported.length) {
+          alert('未识别到客户数据，请检查表头。');
+          return;
+        }
+        mergeCustomers(imported);
+        persistAndRender();
+        customerFile.value = '';
+        alert(`客户主数据导入成功：${imported.length} 条。`);
+      } catch (err) {
+        alert(`导入失败：${err.message || err}`);
+      }
+    });
+
+    demandForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const common = {
+        customer: document.getElementById('demandCustomer').value.trim(),
+        longTerm: document.getElementById('demandLongTerm').value === 'true',
+        inquiryType: document.getElementById('demandInquiryType').value === 'key' ? 'key' : 'normal',
+        stockType: document.getElementById('demandStockType').value === 'stock' ? 'stock' : 'non_stock'
+      };
+
+      const candidates = [];
+      candidates.push({
+        model: document.getElementById('demandModel').value.trim(),
+        quantity: parseOptionalNumber(document.getElementById('demandQty').value),
+        tp: parseOptionalNumber(document.getElementById('demandTp').value),
+        series: document.getElementById('demandSeries').value.trim(),
+        materialInfo: document.getElementById('demandMaterialInfo').value.trim()
+      });
+      candidates.push(...collectExtraDemandRows());
+
+      const validRows = candidates.filter((x) => x.model);
+      if (!validRows.length) {
+        alert('需求录入至少需要填写一个型号。');
+        return;
+      }
+
+      const createdDemands = [];
+      for (const row of validRows) {
+        const newDemand = {
+          id: nextId('D'),
+          createdAt: nowMinuteString(),
+          model: row.model,
+          quantity: row.quantity,
+          tp: row.tp,
+          customer: common.customer,
+          series: row.series,
+          materialInfo: row.materialInfo,
+          longTerm: common.longTerm,
+          inquiryType: common.inquiryType,
+          stockType: common.stockType,
+          closed: false,
+          closedAt: null
+        };
+        const beforeGuessSeries = getSeriesByModel(newDemand.model);
+        if (!newDemand.series) {
+          const guessed = getSeriesByModel(newDemand.model);
+          if (guessed) newDemand.series = guessed;
+        }
+        if (!beforeGuessSeries && newDemand.model && newDemand.series) {
+          upsertModelSeries(newDemand.model, newDemand.series, 'manual');
+        }
+        state.demands.unshift(newDemand);
+        createdDemands.push(newDemand);
+      }
+
+      state.lastDemandText = buildDemandInquiryText(createdDemands, common);
+      persistAndRender();
+      demandForm.reset();
+      document.getElementById('demandLongTerm').value = 'false';
+      document.getElementById('demandInquiryType').value = 'normal';
+      document.getElementById('demandStockType').value = 'non_stock';
+      extraDemandRows.innerHTML = '';
+      demandGeneratedText.value = state.lastDemandText;
+    });
+
+    purchaseForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const common = {
+        offer: document.getElementById('purchaseOffer').value.trim(),
+        offerPerson: document.getElementById('purchaseOfferPerson').value.trim(),
+        stockType: purchaseStockType.value === 'stock' ? 'stock' : 'non_stock'
+      };
+
+      const candidates = [];
+      candidates.push({
+        model: document.getElementById('purchaseModel').value.trim(),
+        series: document.getElementById('purchaseSeries').value.trim(),
+        materialInfo: document.getElementById('purchaseMaterialInfo').value.trim(),
+        quantity: parseOptionalNumber(document.getElementById('purchaseQty').value),
+        unitPrice: parseOptionalNumber(document.getElementById('purchasePrice').value)
+      });
+      candidates.push(...collectExtraOfferRows());
+
+      const validRows = candidates.filter((x) => x.model);
+      if (!validRows.length) {
+        alert('Offer录入仅“型号”为必填。');
+        return;
+      }
+
+      for (const row of validRows) {
+        const newPurchase = {
+          id: nextId('P'),
+          createdAt: nowMinuteString(),
+          model: row.model,
+          series: row.series,
+          materialInfo: row.materialInfo,
+          quantity: row.quantity,
+          unitPrice: row.unitPrice,
+          offer: common.offer,
+          offerPerson: common.offerPerson,
+          stockType: common.stockType
+        };
+        const beforeGuessSeries = getSeriesByModel(newPurchase.model);
+        if (!newPurchase.series) {
+          const guessed = getSeriesByModel(newPurchase.model);
+          if (guessed) newPurchase.series = guessed;
+        }
+        if (!beforeGuessSeries && newPurchase.model && newPurchase.series) {
+          upsertModelSeries(newPurchase.model, newPurchase.series, 'manual');
+        }
+        state.purchases.unshift(newPurchase);
+      }
+      persistAndRender();
+      purchaseForm.reset();
+      purchaseStockType.value = 'non_stock';
+      extraOfferRows.innerHTML = '';
+    });
+
+    clearDataBtn.addEventListener('click', () => {
+      if (!confirm('确认清空需求和Offer数据吗？客户主数据和Offer主数据会保留。')) return;
+      state.demands = [];
+      state.purchases = [];
+      state.lastDemandText = '';
+      persistAndRender();
+    });
+
+    function persistAndRender() {
+      writePersistedState(state);
+      render();
+    }
+
+    function loadState() {
+      try {
+        const raw = readPersistedState();
+        const seedCustomers = Array.isArray(window.CUSTOMER_SEED) ? window.CUSTOMER_SEED.map(normalizeCustomer) : [];
+        const defaultOfferPersons = ['Lily', 'Alyssa', 'Kelly', 'Marin'].map((name) => ({ name }));
+        const seedModelSeries = Array.isArray(window.MODEL_SERIES_SEED) ? window.MODEL_SERIES_SEED.map((x) => normalizeModelSeries({ model: x.model, series: x.series, source: 'seed' })) : [];
+        if (!raw) {
+          return {
+            customers: assignCustomerIds(seedCustomers),
+            offerPersons: assignOfferPersonIds(defaultOfferPersons.map(normalizeOfferPerson)),
+            modelSeries: assignModelSeriesIds(seedModelSeries),
+            demands: [],
+            purchases: [],
+            lastDemandText: '',
+            seq: 1
+          };
+        }
+        const parsed = raw;
+        const customers = Array.isArray(parsed.customers) ? parsed.customers.map(normalizeCustomer) : [];
+        const mergedCustomers = customers.length ? customers : seedCustomers;
+        const customersWithIds = assignCustomerIds(mergedCustomers);
+        const storedOfferPersons = Array.isArray(parsed.offerPersons) ? parsed.offerPersons.map(normalizeOfferPerson) : [];
+        const mergedOfferPersons = mergeOfferPersons(storedOfferPersons, defaultOfferPersons.map(normalizeOfferPerson));
+        const offerPersonsWithIds = assignOfferPersonIds(mergedOfferPersons);
+        const storedModelSeries = Array.isArray(parsed.modelSeries) ? parsed.modelSeries.map(normalizeModelSeries) : [];
+        const mergedModelSeries = mergeModelSeries(storedModelSeries, seedModelSeries);
+        const modelSeriesWithIds = assignModelSeriesIds(mergedModelSeries);
+        const seq = Number.isInteger(parsed.seq) ? parsed.seq : 1;
+        const maxId = findMaxNumericId([
+          ...customersWithIds.map((x) => x.id),
+          ...offerPersonsWithIds.map((x) => x.id),
+          ...modelSeriesWithIds.map((x) => x.id),
+          ...(Array.isArray(parsed.demands) ? parsed.demands : []).map((x) => x.id),
+          ...(Array.isArray(parsed.purchases) ? parsed.purchases : []).map((x) => x.id)
+        ]);
+        return {
+          customers: customersWithIds,
+          offerPersons: offerPersonsWithIds,
+          modelSeries: modelSeriesWithIds,
+          demands: Array.isArray(parsed.demands) ? parsed.demands.map(normalizeDemand) : [],
+          purchases: Array.isArray(parsed.purchases) ? parsed.purchases.map(normalizePurchase) : [],
+          lastDemandText: String(parsed.lastDemandText || ''),
+          seq: Math.max(seq, maxId + 1)
+        };
+      } catch (_) {
+        const seedCustomers = Array.isArray(window.CUSTOMER_SEED) ? window.CUSTOMER_SEED.map(normalizeCustomer) : [];
+        const defaultOfferPersons = ['Lily', 'Alyssa', 'Kelly', 'Marin'].map((name) => ({ name }));
+        const seedModelSeries = Array.isArray(window.MODEL_SERIES_SEED) ? window.MODEL_SERIES_SEED.map((x) => normalizeModelSeries({ model: x.model, series: x.series, source: 'seed' })) : [];
+        return {
+          customers: assignCustomerIds(seedCustomers),
+          offerPersons: assignOfferPersonIds(defaultOfferPersons.map(normalizeOfferPerson)),
+          modelSeries: assignModelSeriesIds(seedModelSeries),
+          demands: [],
+          purchases: [],
+          lastDemandText: '',
+          seq: 1
+        };
+      }
+    }
+
+    function readPersistedState() {
+      let dbState = null;
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/state', false);
+        xhr.send(null);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const res = JSON.parse(xhr.responseText || '{}');
+          if (res && res.ok && typeof res.state === 'object' && res.state !== null) {
+            dbState = res.state;
+          }
+        }
+      } catch (_) {
+        // Fallback to browser cache
+      }
+
+      try {
+        const cached = localStorage.getItem(storeKey);
+        const cachedState = cached ? JSON.parse(cached) : null;
+        const dbHasData = dbState && Object.keys(dbState).length > 0;
+        const cacheHasData = cachedState && Object.keys(cachedState).length > 0;
+
+        if (dbHasData) {
+          localStorage.setItem(storeKey, JSON.stringify(dbState));
+          return dbState;
+        }
+
+        // Migration protection: if DB is empty but local cache has data, keep cache and push it to DB.
+        if (cacheHasData) {
+          writeStateToServer(cachedState);
+          return cachedState;
+        }
+
+        return dbState;
+      } catch (_) {
+        return dbState;
+      }
+    }
+
+    function writePersistedState(nextState) {
+      const payload = JSON.stringify(nextState);
+      try {
+        localStorage.setItem(storeKey, payload);
+      } catch (_) {
+        // ignore cache write error
+      }
+      writeStateToServer(nextState);
+    }
+
+    function writeStateToServer(nextState) {
+      const payload = JSON.stringify(nextState);
+      try {
+        fetch('/api/state', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        }).then((res) => {
+          if (!res.ok) {
+            setBackendHealthy(false);
+            return;
+          }
+          setBackendHealthy(true);
+        }).catch(() => {
+          setBackendHealthy(false);
+        });
+      } catch (_) {
+        setBackendHealthy(false);
+      }
+    }
+
+    function setBackendHealthy(isHealthy, message) {
+      if (isHealthy) {
+        healthBanner.style.display = 'none';
+        healthBannerText.textContent = '后端连接正常。';
+      } else {
+        healthBanner.style.display = 'block';
+        healthBannerText.textContent = message || '后端连接异常，部分操作可能无法保存。';
+      }
+    }
+
+    async function checkBackendHealth() {
+      try {
+        const res = await fetch('/healthz', { cache: 'no-store' });
+        if (!res.ok) return false;
+        const data = await res.json();
+        return !!(data && data.ok);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function startHealthPolling() {
+      setTimeout(async () => {
+        const ok = await checkBackendHealth();
+        setBackendHealthy(ok);
+      }, 300);
+      setInterval(async () => {
+        const ok = await checkBackendHealth();
+        setBackendHealthy(ok);
+      }, 15000);
+    }
+
+    function nextId(prefix) {
+      const id = `${prefix}${String(state.seq).padStart(5, '0')}`;
+      state.seq += 1;
+      return id;
+    }
+
+    function nowMinuteString() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    function compareTimeAsc(a, b) {
+      return new Date(a.replace(' ', 'T') + ':00').getTime() - new Date(b.replace(' ', 'T') + ':00').getTime();
+    }
+
+    function findMaxNumericId(ids) {
+      let max = 0;
+      for (const id of ids) {
+        const m = String(id || '').match(/(\d+)$/);
+        if (!m) continue;
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+      return max;
+    }
+
+    function normalizeModelText(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function buildModelSeriesMap(items) {
+      const map = new Map();
+      for (const item of items) {
+        const model = normalizeModelText(item && item.model);
+        const series = String((item && item.series) || '').trim();
+        if (!model || !series) continue;
+        if (!map.has(model)) map.set(model, series);
+      }
+      return map;
+    }
+
+    function getSeriesByModel(model) {
+      const key = normalizeModelText(model);
+      if (!key) return '';
+      const modelSeriesItems = state.modelSeries || [];
+      const modelSeriesMap = buildModelSeriesMap(modelSeriesItems);
+      const exact = modelSeriesMap.get(key);
+      if (exact) return exact;
+
+      const prefixHit = modelSeriesItems
+        .filter((x) => normalizeModelText(x && x.model).startsWith(key))
+        .map((x) => String(x.series || '').trim())
+        .filter(Boolean);
+      const unique = Array.from(new Set(prefixHit));
+      return unique.length === 1 ? unique[0] : '';
+    }
+
+    function autoFillSeriesByModel(modelInput, seriesInput) {
+      const model = modelInput.value.trim();
+      const guess = getSeriesByModel(model);
+      if (!guess) return;
+      if (!seriesInput.value.trim()) {
+        seriesInput.value = guess;
+      }
+    }
+
+    function setModuleView(moduleName) {
+      document.body.setAttribute('data-module', moduleName);
+      if (moduleName !== 'sales-demand-query') {
+        salesQueryEditPanel.style.display = 'none';
+      }
+      menuSalesDashboardBtn.classList.toggle('active', moduleName === 'sales-dashboard');
+      menuSalesDemandBtn.classList.toggle('active', moduleName === 'sales-demand');
+      menuSalesDemandQueryBtn.classList.toggle('active', moduleName === 'sales-demand-query');
+      menuDemandListBtn.classList.toggle('active', moduleName === 'demand-list');
+      menuOfferEntryBtn.classList.toggle('active', moduleName === 'offer-entry');
+      menuOfferDetailBtn.classList.toggle('active', moduleName === 'offer-query');
+      menuCustomerBtn.classList.toggle('active', moduleName === 'customer');
+      menuOfferMasterBtn.classList.toggle('active', moduleName === 'offer-master');
+      menuModelSeriesBtn.classList.toggle('active', moduleName === 'model-series');
+      document.querySelectorAll('[data-module-card]').forEach((card) => {
+        card.style.display = card.getAttribute('data-module-card') === moduleName ? '' : 'none';
+      });
+    }
+
+    function assignCustomerIds(customers) {
+      let cursor = findMaxNumericId(customers.map((x) => x.id)) + 1;
+      return customers.map((c) => {
+        if (c.id) return c;
+        return { ...c, id: `C${String(cursor++).padStart(5, '0')}` };
+      });
+    }
+
+    function normalizeCustomer(raw) {
+      return {
+        id: String(raw.id || ''),
+        name: String(raw.name || '').trim(),
+        window: String(raw.window || raw.contactWindow || '').trim(),
+        type: String(raw.type || '').trim(),
+        productLine: String(raw.productLine || '').trim(),
+        channel: String(raw.channel || '').trim(),
+        channelNote: String(raw.channelNote || '').trim(),
+        owner: String(raw.owner || '').trim(),
+        contactName: String(raw.contactName || '').trim(),
+        contactPhone: String(raw.contactPhone || '').trim(),
+        trait: String(raw.trait || raw.customerTrait || '').trim(),
+        email: String(raw.email || '').trim(),
+        officeAddress: String(raw.officeAddress || raw.address || '').trim(),
+        website: String(raw.website || raw.site || '').trim(),
+        region: String(raw.region || '').trim(),
+        hasDeal: String(raw.hasDeal || '').trim(),
+        cardImage: String(raw.cardImage || '').trim()
+      };
+    }
+
+    function normalizeOfferPerson(raw) {
+      return {
+        id: String(raw.id || ''),
+        name: String(raw.name || '').trim()
+      };
+    }
+
+    function assignOfferPersonIds(offerPersons) {
+      let cursor = findMaxNumericId(offerPersons.map((x) => x.id)) + 1;
+      return offerPersons.map((p) => {
+        if (p.id) return p;
+        return { ...p, id: `O${String(cursor++).padStart(5, '0')}` };
+      });
+    }
+
+    function normalizeModelSeries(raw) {
+      return {
+        id: String(raw.id || ''),
+        model: String(raw.model || '').trim(),
+        series: String(raw.series || '').trim(),
+        source: String(raw.source || 'manual').trim() || 'manual'
+      };
+    }
+
+    function assignModelSeriesIds(modelSeries) {
+      let cursor = findMaxNumericId(modelSeries.map((x) => x.id)) + 1;
+      return modelSeries.map((r) => {
+        if (r.id) return r;
+        return { ...r, id: `MS${String(cursor++).padStart(5, '0')}` };
+      });
+    }
+
+    function mergeModelSeries(stored, seeds) {
+      const out = [];
+      const index = new Map();
+      for (const item of [...seeds, ...stored]) {
+        const row = normalizeModelSeries(item);
+        if (!row.model || !row.series) continue;
+        const key = normalizeModelText(row.model);
+        if (!index.has(key)) {
+          index.set(key, out.length);
+          out.push(row);
+        } else {
+          const i = index.get(key);
+          out[i] = { ...out[i], ...row };
+        }
+      }
+      return out.sort((a, b) => a.model.localeCompare(b.model, 'en'));
+    }
+
+    function upsertModelSeries(model, series, source) {
+      const row = normalizeModelSeries({ model, series, source: source || 'manual' });
+      if (!row.model || !row.series) return;
+      const key = normalizeModelText(row.model);
+      const existing = state.modelSeries.find((x) => normalizeModelText(x.model) === key);
+      if (existing) {
+        existing.series = row.series;
+        if (source) existing.source = source;
+      } else {
+        state.modelSeries.push({ id: nextId('MS'), ...row });
+      }
+      state.modelSeries.sort((a, b) => a.model.localeCompare(b.model, 'en'));
+    }
+
+    function mergeOfferPersons(stored, defaults) {
+      const out = [];
+      const seen = new Set();
+      for (const item of [...stored, ...defaults]) {
+        const normalized = normalizeOfferPerson(item);
+        if (!normalized.name) continue;
+        const key = normalized.name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(normalized);
+      }
+      return out.sort((a, b) => a.name.localeCompare(b.name, 'en'));
+    }
+
+    function normalizeDemand(raw) {
+      return {
+        ...raw,
+        model: String(raw.model || '').trim(),
+        customer: String(raw.customer || '').trim(),
+        series: String(raw.series || raw.materialNo || '').trim(),
+        materialInfo: String(raw.materialInfo || '').trim(),
+        quantity: parseOptionalNumber(raw.quantity),
+        tp: parseOptionalNumber(raw.tp),
+        longTerm: !!raw.longTerm,
+        inquiryType: raw.inquiryType === 'key' ? 'key' : 'normal',
+        stockType: raw.stockType === 'stock' ? 'stock' : 'non_stock',
+        closed: !!raw.closed,
+        closedAt: raw.closedAt || null
+      };
+    }
+
+    function normalizePurchase(raw) {
+      return {
+        ...raw,
+        model: String(raw.model || '').trim(),
+        series: String(raw.series || raw.materialNo || '').trim(),
+        materialInfo: String(raw.materialInfo || '').trim(),
+        quantity: parseOptionalNumber(raw.quantity),
+        unitPrice: parseOptionalNumber(raw.unitPrice),
+        offer: String(raw.offer || raw.supplier || '').trim(),
+        offerPerson: String(raw.offerPerson || '').trim(),
+        stockType: raw.stockType === 'stock' ? 'stock' : 'non_stock'
+      };
+    }
+
+    function cellByAliases(row, aliases) {
+      const keys = Object.keys(row || {});
+      const map = new Map(keys.map((k) => [String(k).trim().toLowerCase(), k]));
+      for (const alias of aliases) {
+        const hitKey = map.get(alias.toLowerCase());
+        if (!hitKey) continue;
+        const value = row[hitKey];
+        if (value === null || value === undefined) continue;
+        const text = String(value).trim();
+        if (text) return text;
+      }
+      return '';
+    }
+
+    function mapCustomerRow(row) {
+      const customer = normalizeCustomer({
+        id: nextId('C'),
+        name: cellByAliases(row, ['客户名称', '客户', '客户名', 'name', 'customer']),
+        window: cellByAliases(row, ['客户窗口', '窗口', 'window', 'contact window']),
+        type: cellByAliases(row, ['客户类型', '客户类型(经销商、大贸、次终端、终端）', 'type']),
+        productLine: cellByAliases(row, ['产品线', '产品线（品牌和产品类型）', 'productline', 'product line']),
+        channel: cellByAliases(row, ['沟通渠道', '沟通渠道（微信群、teams、whatsapp、其他）', 'channel']),
+        channelNote: cellByAliases(row, ['如填写了其他沟通渠道，请在这里具体说明', '渠道说明', 'channelnote', 'channel note']),
+        owner: cellByAliases(row, ['目前跟进人', '跟进人', 'owner']),
+        contactName: cellByAliases(row, ['客户联系人', '联系人', 'contact', 'contact name']),
+        contactPhone: cellByAliases(row, ['联系方式', '联系电话', '手机号', 'phone', 'mobile']),
+        trait: cellByAliases(row, ['客户特性描述', '客户特性', '特性描述', 'trait', 'customer trait']),
+        email: cellByAliases(row, ['邮箱', 'email', 'mail']),
+        officeAddress: cellByAliases(row, ['客户办公地址', '办公地址', '地址', 'address', 'office address']),
+        website: cellByAliases(row, ['官网', '网站', '网址', 'website', 'site', 'url']),
+        region: cellByAliases(row, ['所属区域', '区域', 'region']),
+        hasDeal: cellByAliases(row, ['是否有过成交', '是否成交', 'hasdeal', 'deal'])
+      });
+      return customer;
+    }
+
+    async function parseCustomerFile(file) {
+      const name = (file.name || '').toLowerCase();
+      if (name.endsWith('.csv')) {
+        const text = await file.text();
+        return parseCustomerCsv(text);
+      }
+
+      if (!window.XLSX) {
+        throw new Error('Excel 解析库未加载，请联网后重试或改用 CSV 导入。');
+      }
+
+      const buf = await file.arrayBuffer();
+      const wb = window.XLSX.read(buf, { type: 'array' });
+      const sheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
+      const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      return rows.map(mapCustomerRow).filter((x) => x.name);
+    }
+
+    function parseCustomerCsv(text) {
+      const lines = String(text || '').split(/\r?\n/).filter((x) => x.trim());
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(',').map((x) => x.trim());
+      const rows = lines.slice(1).map((line) => {
+        const cols = line.split(',');
+        const row = {};
+        headers.forEach((h, i) => {
+          row[h] = (cols[i] || '').trim();
+        });
+        return row;
+      });
+      return rows.map(mapCustomerRow).filter((x) => x.name);
+    }
+
+    function mergeCustomers(customers) {
+      for (const incomingRaw of customers) {
+        const incoming = normalizeCustomer(incomingRaw);
+        if (!incoming.name) continue;
+        const existing = state.customers.find((x) => x.name === incoming.name && String(x.window || '') === String(incoming.window || ''));
+        if (existing) {
+          existing.window = incoming.window || existing.window;
+          existing.type = incoming.type || existing.type;
+          existing.productLine = incoming.productLine || existing.productLine;
+          existing.channel = incoming.channel || existing.channel;
+          existing.channelNote = incoming.channelNote || existing.channelNote;
+          existing.owner = incoming.owner || existing.owner;
+          existing.contactName = incoming.contactName || existing.contactName;
+          existing.contactPhone = incoming.contactPhone || existing.contactPhone;
+          existing.trait = incoming.trait || existing.trait;
+          existing.email = incoming.email || existing.email;
+          existing.officeAddress = incoming.officeAddress || existing.officeAddress;
+          existing.website = incoming.website || existing.website;
+          existing.region = incoming.region || existing.region;
+          existing.hasDeal = incoming.hasDeal || existing.hasDeal;
+          existing.cardImage = incoming.cardImage || existing.cardImage;
+        } else {
+          if (!incoming.id) incoming.id = nextId('C');
+          state.customers.push(incoming);
+        }
+      }
+      state.customers.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+    }
+
+    function parseOptionalNumber(raw) {
+      const text = String(raw ?? '').trim();
+      if (!text) return null;
+      const n = Number(text);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function loadColumnOrder(storageKey, defaultOrder) {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return [...defaultOrder];
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [...defaultOrder];
+        const set = new Set(defaultOrder);
+        const filtered = arr.filter((k) => set.has(k));
+        const missing = defaultOrder.filter((k) => !filtered.includes(k));
+        return [...filtered, ...missing];
+      } catch (_) {
+        return [...defaultOrder];
+      }
+    }
+
+    function saveColumnOrder(storageKey, order) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(order));
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    function moveKey(order, dragKey, targetKey) {
+      if (!dragKey || !targetKey || dragKey === targetKey) return order;
+      const out = [...order];
+      const from = out.indexOf(dragKey);
+      const to = out.indexOf(targetKey);
+      if (from < 0 || to < 0) return out;
+      out.splice(from, 1);
+      out.splice(to, 0, dragKey);
+      return out;
+    }
+
+    function renderDraggableHeader(headerRow, columns, order, onReorder) {
+      if (!headerRow) return;
+      const map = new Map(columns.map((c) => [c.key, c.label]));
+      headerRow.innerHTML = order
+        .filter((k) => map.has(k))
+        .map((k) => `<th draggable="true" data-col-key="${escapeHtml(k)}" title="拖拽调整字段顺序">${escapeHtml(map.get(k))}</th>`)
+        .join('');
+      let dragKey = '';
+      headerRow.querySelectorAll('th[data-col-key]').forEach((th) => {
+        th.addEventListener('dragstart', (e) => {
+          dragKey = th.getAttribute('data-col-key') || '';
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        th.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+        th.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const targetKey = th.getAttribute('data-col-key') || '';
+          if (!dragKey || !targetKey || dragKey === targetKey) return;
+          onReorder(dragKey, targetKey);
+          dragKey = '';
+        });
+      });
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const raw = String(reader.result || '');
+          const marker = 'base64,';
+          const idx = raw.indexOf(marker);
+          if (idx < 0) {
+            reject(new Error('图片读取失败'));
+            return;
+          }
+          resolve(raw.slice(idx + marker.length));
+        };
+        reader.onerror = () => reject(new Error('图片读取失败'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadCustomerCard(customerId, file) {
+      const contentBase64 = await fileToBase64(file);
+      const res = await fetch('/api/upload-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          filename: file.name || 'card.jpg',
+          contentBase64
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.imagePath) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      return String(data.imagePath);
+    }
+
+    function buildDemandInquiryText(demands, common) {
+      const list = Array.isArray(demands) ? demands : [];
+      const inquiryLabel = (common && common.inquiryType) === 'key' ? '重点询盘' : '普通询盘';
+      const inquiryPrefix = (common && common.inquiryType) === 'key' ? 'A' : 'B';
+      const customer = String((common && common.customer) || (list[0] && list[0].customer) || '').trim() || '客户未填';
+      const rows = list.map((d) => {
+        const model = String(d.model || '').trim() || '型号未填';
+        const qtyRaw = d.quantity;
+        const qtyText = Number.isFinite(qtyRaw) ? `${qtyRaw}pcs` : '数量未填';
+        return `${model} ${qtyText}`;
+      });
+      return `${inquiryLabel}\n${inquiryPrefix} ${customer} INQ\n${rows.join('\n')}`;
+    }
+
+    function buildDemandListTextByStockType(stockType) {
+      const label = stockType === 'stock' ? '库存' : '非库存';
+      const { demandMatch } = computeAllocationAndLatestPrice();
+      const items = getFilteredDemands().filter((d) => {
+        if ((d.stockType || 'non_stock') !== stockType) return false;
+        const match = demandMatch.get(d.id);
+        const hasLatestOfferPrice = !!(match && match.latestPurchase && Number.isFinite(match.latestPurchase.unitPrice));
+        // New rule: when latest offer price exists, do not generate text for this demand.
+        return !hasLatestOfferPrice;
+      });
+      if (!items.length) {
+        return `暂无${label}待生成文本需求（有最新offer价格的需求已自动排除）`;
+      }
+      const grouped = new Map();
+      for (const d of items) {
+        const inquiryPrefix = d.inquiryType === 'key' ? 'A' : 'B';
+        const customer = String(d.customer || '').trim() || '客户未填';
+        const material = String(d.materialInfo || '').trim() || String(d.model || '').trim() || '物料未填';
+        const qty = Number.isFinite(d.quantity) ? `${d.quantity}` : '数量未填';
+        const groupKey = `${inquiryPrefix}||${customer}`;
+        if (!grouped.has(groupKey)) {
+          grouped.set(groupKey, { inquiryPrefix, customer, lines: [] });
+        }
+        grouped.get(groupKey).lines.push(`${material} ${qty}`);
+      }
+      const blocks = Array.from(grouped.values()).map((g) => `${g.inquiryPrefix} ${g.customer} INQ\n${g.lines.join('\n')}`);
+      return blocks.join('\n\n');
+    }
+
+    function addExtraDemandRow() {
+      const row = document.createElement('div');
+      row.className = 'demand-row';
+      row.innerHTML = `
+        <input data-role="model" placeholder="型号（必填）" />
+        <input data-role="qty" type="number" min="0" placeholder="数量" />
+        <input data-role="tp" type="number" min="0" step="0.0001" placeholder="TP" />
+        <input data-role="series" list="seriesList" placeholder="系列" />
+        <button type="button" class="secondary" data-role="remove">删除</button>
+      `;
+      const modelInput = row.querySelector('input[data-role="model"]');
+      const seriesInput = row.querySelector('input[data-role="series"]');
+      modelInput.addEventListener('input', () => autoFillSeriesByModel(modelInput, seriesInput));
+      modelInput.addEventListener('blur', () => autoFillSeriesByModel(modelInput, seriesInput));
+      row.querySelector('button[data-role="remove"]').addEventListener('click', () => row.remove());
+      extraDemandRows.appendChild(row);
+    }
+
+    function collectExtraDemandRows() {
+      const rows = [];
+      extraDemandRows.querySelectorAll('.demand-row').forEach((row) => {
+        const model = row.querySelector('input[data-role="model"]').value.trim();
+        const quantity = parseOptionalNumber(row.querySelector('input[data-role="qty"]').value);
+        const tp = parseOptionalNumber(row.querySelector('input[data-role="tp"]').value);
+        const series = row.querySelector('input[data-role="series"]').value.trim();
+        if (!model) return;
+        rows.push({
+          model,
+          quantity,
+          tp,
+          series,
+          materialInfo: ''
+        });
+      });
+      return rows;
+    }
+
+    function addExtraOfferRow() {
+      const row = document.createElement('div');
+      row.className = 'offer-row';
+      row.innerHTML = `
+        <input data-role="model" placeholder="型号（必填）" />
+        <input data-role="series" list="seriesList" placeholder="系列" />
+        <input data-role="materialInfo" placeholder="物料信息" />
+        <input data-role="qty" type="number" min="0" placeholder="Offer数量" />
+        <input data-role="price" type="number" min="0" step="0.0001" placeholder="Offer单价" />
+        <button type="button" class="secondary" data-role="remove">删除</button>
+      `;
+      const modelInput = row.querySelector('input[data-role="model"]');
+      const seriesInput = row.querySelector('input[data-role="series"]');
+      modelInput.addEventListener('input', () => autoFillSeriesByModel(modelInput, seriesInput));
+      modelInput.addEventListener('blur', () => autoFillSeriesByModel(modelInput, seriesInput));
+      row.querySelector('button[data-role="remove"]').addEventListener('click', () => row.remove());
+      extraOfferRows.appendChild(row);
+    }
+
+    function collectExtraOfferRows() {
+      const rows = [];
+      extraOfferRows.querySelectorAll('.offer-row').forEach((row) => {
+        const model = row.querySelector('input[data-role="model"]').value.trim();
+        const series = row.querySelector('input[data-role="series"]').value.trim();
+        const materialInfo = row.querySelector('input[data-role="materialInfo"]').value.trim();
+        const quantity = parseOptionalNumber(row.querySelector('input[data-role="qty"]').value);
+        const unitPrice = parseOptionalNumber(row.querySelector('input[data-role="price"]').value);
+        if (!model) return;
+        rows.push({
+          model,
+          series,
+          materialInfo,
+          quantity,
+          unitPrice
+        });
+      });
+      return rows;
+    }
+
+    function minuteStringToMs(text) {
+      return new Date(String(text || '').replace(' ', 'T') + ':00').getTime();
+    }
+
+    function getFilteredDemands() {
+      const modelKeyword = String(demandFilterModel.value || '').trim().toUpperCase();
+      const customerKeyword = String(demandFilterCustomer.value || '').trim().toUpperCase();
+      const startMs = demandFilterStart.value ? new Date(demandFilterStart.value).getTime() : null;
+      const endMs = demandFilterEnd.value ? new Date(demandFilterEnd.value).getTime() : null;
+      return (state.demands || []).filter((d) => {
+        if (modelKeyword && !String(d.model || '').toUpperCase().includes(modelKeyword)) {
+          return false;
+        }
+        if (customerKeyword && !String(d.customer || '').toUpperCase().includes(customerKeyword)) {
+          return false;
+        }
+        const createdMs = minuteStringToMs(d.createdAt);
+        if (Number.isFinite(startMs) && createdMs < startMs) {
+          return false;
+        }
+        if (Number.isFinite(endMs) && createdMs > endMs) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function getSalesQueryFilteredDemands() {
+      const modelKeyword = String(salesQueryModel.value || '').trim().toUpperCase();
+      const customerKeyword = String(salesQueryCustomer.value || '').trim().toUpperCase();
+      const startMs = salesQueryStart.value ? new Date(salesQueryStart.value).getTime() : null;
+      const endMs = salesQueryEnd.value ? new Date(salesQueryEnd.value).getTime() : null;
+      return (state.demands || [])
+        .filter((d) => {
+          if (modelKeyword && !String(d.model || '').toUpperCase().includes(modelKeyword)) return false;
+          if (customerKeyword && !String(d.customer || '').toUpperCase().includes(customerKeyword)) return false;
+          const createdMs = minuteStringToMs(d.createdAt);
+          if (Number.isFinite(startMs) && createdMs < startMs) return false;
+          if (Number.isFinite(endMs) && createdMs > endMs) return false;
+          return true;
+        })
+        .sort((a, b) => compareTimeAsc(b.createdAt, a.createdAt));
+    }
+
+    function getDashboardFilteredDemands() {
+      const startMs = dashboardStart.value ? new Date(dashboardStart.value).getTime() : null;
+      const endMs = dashboardEnd.value ? new Date(dashboardEnd.value).getTime() : null;
+      return (state.demands || []).filter((d) => {
+        const createdMs = minuteStringToMs(d.createdAt);
+        if (Number.isFinite(startMs) && createdMs < startMs) return false;
+        if (Number.isFinite(endMs) && createdMs > endMs) return false;
+        return true;
+      });
+    }
+
+    function drawDashboardBarChart(items) {
+      const canvas = dashboardBarCanvas;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(420, Math.floor(rect.width || 900));
+      const height = 240;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const byDay = new Map();
+      for (const item of items) {
+        const day = String(item.createdAt || '').slice(0, 10);
+        if (!day) continue;
+        if (!byDay.has(day)) byDay.set(day, { day, total: 0, hasOffer: 0 });
+        const row = byDay.get(day);
+        row.total += 1;
+        if (item.hasOfferPrice) row.hasOffer += 1;
+      }
+      const bars = Array.from(byDay.values()).sort((a, b) => a.day.localeCompare(b.day));
+
+      ctx.fillStyle = '#5a6f8f';
+      ctx.font = '13px Segoe UI';
+      if (!bars.length) {
+        ctx.fillText('当前日期筛选范围内暂无数据', 16, 30);
+        return;
+      }
+
+      const padL = 44;
+      const padR = 16;
+      const padT = 22;
+      const padB = 44;
+      const chartW = width - padL - padR;
+      const chartH = height - padT - padB;
+      const maxY = Math.max(1, ...bars.map((x) => x.total));
+
+      ctx.strokeStyle = '#dbe3ef';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + chartH);
+      ctx.lineTo(width - padR, padT + chartH);
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + chartH);
+      ctx.stroke();
+
+      const slotW = chartW / bars.length;
+      const barW = Math.max(4, Math.min(20, slotW * 0.32));
+
+      bars.forEach((b, i) => {
+        const xCenter = padL + i * slotW + slotW / 2;
+        const totalH = (b.total / maxY) * chartH;
+        const offerH = (b.hasOffer / maxY) * chartH;
+
+        ctx.fillStyle = '#1d4ed8';
+        ctx.fillRect(xCenter - barW - 1, padT + chartH - totalH, barW, totalH);
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(xCenter + 1, padT + chartH - offerH, barW, offerH);
+
+        const labelStep = Math.max(1, Math.ceil(bars.length / 8));
+        if (i % labelStep === 0 || i === bars.length - 1) {
+          ctx.fillStyle = '#5a6f8f';
+          ctx.font = '11px Segoe UI';
+          ctx.fillText(b.day.slice(5), xCenter - 16, padT + chartH + 16);
+        }
+      });
+
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillRect(padL + 4, 6, 10, 10);
+      ctx.fillStyle = '#5a6f8f';
+      ctx.font = '11px Segoe UI';
+      ctx.fillText('询价次数', padL + 18, 15);
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(padL + 84, 6, 10, 10);
+      ctx.fillStyle = '#5a6f8f';
+      ctx.fillText('有offer次数', padL + 98, 15);
+      ctx.fillText(`最大值: ${maxY}`, width - padR - 66, 15);
+    }
+
+    function drawOfferTrendChart(purchases, modelKeyword) {
+      const canvas = offerTrendCanvas;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(300, Math.floor(rect.width || 800));
+      const height = 220;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+
+      const points = purchases
+        .filter((p) => Number.isFinite(p.unitPrice))
+        .map((p) => ({ x: minuteStringToMs(p.createdAt), y: Number(p.unitPrice), t: p.createdAt }))
+        .filter((p) => Number.isFinite(p.x))
+        .sort((a, b) => a.x - b.x);
+
+      ctx.fillStyle = '#5a6f8f';
+      ctx.font = '13px Segoe UI';
+      if (!points.length) {
+        const msg = modelKeyword ? '该型号暂无可绘制的历史价格数据' : '先输入型号关键字查看历史价格走势图';
+        ctx.fillText(msg, 16, 30);
+        return;
+      }
+
+      const padL = 48;
+      const padR = 16;
+      const padT = 20;
+      const padB = 32;
+      const chartW = width - padL - padR;
+      const chartH = height - padT - padB;
+
+      const xMin = points[0].x;
+      const xMax = points[points.length - 1].x;
+      const yMin = Math.min(...points.map((p) => p.y));
+      const yMax = Math.max(...points.map((p) => p.y));
+      const ySpan = Math.max(0.0001, yMax - yMin);
+      const xSpan = Math.max(1, xMax - xMin);
+
+      ctx.strokeStyle = '#dbe3ef';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + chartH);
+      ctx.lineTo(width - padR, padT + chartH);
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + chartH);
+      ctx.stroke();
+
+      const mapped = points.map((p) => ({
+        x: padL + ((p.x - xMin) / xSpan) * chartW,
+        y: padT + chartH - ((p.y - yMin) / ySpan) * chartH,
+        v: p.y,
+        t: p.t
+      }));
+
+      ctx.strokeStyle = '#1d4ed8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      mapped.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#1d4ed8';
+      for (const p of mapped) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#5a6f8f';
+      ctx.font = '12px Segoe UI';
+      ctx.fillText('价格', 12, padT + 8);
+      ctx.fillText('时间', width / 2 - 12, height - 8);
+      ctx.fillText(`最低: ${yMin.toFixed(4)}`, padL, height - 8);
+      ctx.fillText(`最高: ${yMax.toFixed(4)}`, width - padR - 88, height - 8);
+      ctx.fillText(points[0].t, padL, padT + chartH + 16);
+      ctx.fillText(points[points.length - 1].t, width - padR - 120, padT + chartH + 16);
+    }
+
+    function showCell(value) {
+      return value === null || value === undefined || value === '' ? '<span class="muted">-</span>' : escapeHtml(String(value));
+    }
+
+    function computeAllocationAndLatestPrice() {
+      const purchases = state.purchases.map((p) => ({ ...p }));
+      purchases.sort((a, b) => compareTimeAsc(a.createdAt, b.createdAt));
+
+      const demands = state.demands.map((d) => ({ ...d }));
+      demands.sort((a, b) => compareTimeAsc(a.createdAt, b.createdAt));
+
+      const demandMatch = new Map();
+
+      for (const demand of demands) {
+        const sameModelPurchases = purchases.filter((p) => p.model && demand.model && p.model === demand.model);
+        const latestPurchase = sameModelPurchases.length
+          ? sameModelPurchases.reduce((max, cur) => compareTimeAsc(max.createdAt, cur.createdAt) >= 0 ? max : cur)
+          : null;
+        const hasTp = Number.isFinite(demand.tp);
+        const hasLatestPrice = latestPurchase && Number.isFinite(latestPurchase.unitPrice);
+        const canClose = !!(hasTp && hasLatestPrice && demand.tp > latestPurchase.unitPrice);
+
+        let status = '未匹配';
+        if (!latestPurchase) {
+          status = '未匹配';
+        } else if (!hasTp) {
+          status = 'TP未填';
+        } else if (!hasLatestPrice) {
+          status = '最新offer价格缺失';
+        } else if (demand.tp <= latestPurchase.unitPrice) {
+          status = '价格不满足(TP<=最新offer价格)';
+        } else {
+          status = '可关闭(已满足)';
+        }
+
+        demandMatch.set(demand.id, {
+          canClose: demand.closed ? false : canClose,
+          latestPurchase,
+          status: demand.closed ? '已关闭' : status
+        });
+      }
+
+      return { purchases, demandMatch };
+    }
+
+    function render() {
+      const { purchases, demandMatch } = computeAllocationAndLatestPrice();
+      const allDemands = getDashboardFilteredDemands();
+      const demandModelSet = new Set(
+        allDemands
+          .map((d) => normalizeModelText(d && d.model))
+          .filter(Boolean)
+      );
+      const offerModelSet = new Set(
+        (Array.isArray(state.purchases) ? state.purchases : [])
+          .filter((p) => Number.isFinite(p && p.unitPrice))
+          .map((p) => normalizeModelText(p && p.model))
+          .filter(Boolean)
+      );
+      const hasOfferModelCount = Array.from(demandModelSet).filter((m) => offerModelSet.has(m)).length;
+      dashboardInquiryCount.value = String(allDemands.length);
+      dashboardUniqueModelCount.value = String(demandModelSet.size);
+      dashboardHasOfferModelCount.value = String(hasOfferModelCount);
+      const dashboardRows = allDemands
+        .map((d) => {
+          const match = demandMatch.get(d.id);
+          const hasOfferPrice = !!(match && match.latestPurchase && Number.isFinite(match.latestPurchase.unitPrice));
+          return {
+            id: d.id,
+            createdAt: d.createdAt,
+            customer: d.customer,
+            model: d.model,
+            inquiryType: d.inquiryType,
+            stockType: d.stockType,
+            hasOfferPrice,
+            latestPriceText: match && match.latestPurchase
+              ? `${Number.isFinite(match.latestPurchase.unitPrice) ? match.latestPurchase.unitPrice.toFixed(4) : '-'} @ ${match.latestPurchase.createdAt}`
+              : '无'
+          };
+        })
+        .sort((a, b) => compareTimeAsc(b.createdAt, a.createdAt));
+      dashboardDetailTbody.innerHTML = dashboardRows.map((r) => `
+          <tr>
+            <td>${escapeHtml(r.id)}</td>
+            <td>${escapeHtml(r.createdAt)}</td>
+            <td>${escapeHtml(r.customer || '-')}</td>
+            <td>${escapeHtml(r.model || '-')}</td>
+            <td>${r.inquiryType === 'key' ? '<span class="pill bad">重点询盘</span>' : '<span class="pill">普通询盘</span>'}</td>
+            <td>${r.stockType === 'stock' ? '<span class="pill ok">库存</span>' : '<span class="pill">非库存</span>'}</td>
+            <td>${escapeHtml(r.latestPriceText)}</td>
+            <td>${r.hasOfferPrice ? '<span class="pill ok">有</span>' : '<span class="pill bad">无</span>'}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="8" class="muted">当前筛选范围暂无明细</td></tr>';
+      drawDashboardBarChart(dashboardRows);
+
+      const salesQueryDemands = getSalesQueryFilteredDemands();
+      salesQueryCount.textContent = String(salesQueryDemands.length);
+      salesQueryTbody.innerHTML = salesQueryDemands.map((d) => {
+        const match = demandMatch.get(d.id);
+        const isEditing = editingSalesDemandId === d.id;
+        const inquiryTag = d.inquiryType === 'key' ? '<span class="pill bad">重点询盘</span>' : '<span class="pill">普通询盘</span>';
+        const stockTag = d.stockType === 'stock' ? '<span class="pill ok">库存</span>' : '<span class="pill">非库存</span>';
+        const longTermTag = d.longTerm ? '<span class="pill warn">长期</span>' : '<span class="pill">短期</span>';
+        const closeTag = d.closed ? '<span class="pill">已关闭</span>' : '<span class="pill warn">未关闭</span>';
+        const latestPrice = match && match.latestPurchase
+          ? `${Number.isFinite(match.latestPurchase.unitPrice) ? match.latestPurchase.unitPrice.toFixed(4) : '-'} @ ${match.latestPurchase.createdAt}`
+          : '无';
+        if (isEditing) {
+          const cells = {
+            id: escapeHtml(d.id),
+            createdAt: escapeHtml(d.createdAt),
+            customer: `<input data-demand-field="customer" value="${escapeHtml(d.customer || '')}" list="customerList" />`,
+            model: `<input data-demand-field="model" value="${escapeHtml(d.model || '')}" />`,
+            series: `<input data-demand-field="series" value="${escapeHtml(d.series || '')}" list="seriesList" />`,
+            materialInfo: `<input data-demand-field="materialInfo" value="${escapeHtml(d.materialInfo || '')}" />`,
+            quantity: `<input data-demand-field="quantity" type="number" min="0" value="${Number.isFinite(d.quantity) ? String(d.quantity) : ''}" />`,
+            tp: `<input data-demand-field="tp" type="number" min="0" step="0.0001" value="${Number.isFinite(d.tp) ? String(d.tp) : ''}" />`,
+            inquiryType: `
+                <select data-demand-field="inquiryType">
+                  <option value="normal" ${d.inquiryType === 'key' ? '' : 'selected'}>普通</option>
+                  <option value="key" ${d.inquiryType === 'key' ? 'selected' : ''}>重点</option>
+                </select>
+              `,
+            stockType: `
+                <select data-demand-field="stockType">
+                  <option value="non_stock" ${d.stockType === 'stock' ? '' : 'selected'}>非库存</option>
+                  <option value="stock" ${d.stockType === 'stock' ? 'selected' : ''}>库存</option>
+                </select>
+              `,
+            longTerm: `
+                <select data-demand-field="longTerm">
+                  <option value="false" ${d.longTerm ? '' : 'selected'}>否</option>
+                  <option value="true" ${d.longTerm ? 'selected' : ''}>是</option>
+                </select>
+              `,
+            closed: `
+                <select data-demand-field="closed">
+                  <option value="false" ${d.closed ? '' : 'selected'}>未关闭</option>
+                  <option value="true" ${d.closed ? 'selected' : ''}>已关闭</option>
+                </select>
+              `,
+            latestOffer: escapeHtml(latestPrice),
+            action: `
+                <button data-demand-action="save" data-demand-id="${escapeHtml(d.id)}">保存</button>
+                <button class="secondary" data-demand-action="cancel" data-demand-id="${escapeHtml(d.id)}">取消</button>
+              `
+          };
+          return `
+            <tr class="sales-query-edit" data-demand-edit-row-id="${escapeHtml(d.id)}">
+              ${salesQueryColOrder.map((k) => `<td>${cells[k] || ''}</td>`).join('')}
+            </tr>
+          `;
+        }
+        const cells = {
+          id: escapeHtml(d.id),
+          createdAt: escapeHtml(d.createdAt),
+          customer: escapeHtml(d.customer || '-'),
+          model: escapeHtml(d.model || '-'),
+          series: escapeHtml(d.series || '-'),
+          materialInfo: escapeHtml(d.materialInfo || '-'),
+          quantity: showCell(d.quantity),
+          tp: showCell(Number.isFinite(d.tp) ? d.tp.toFixed(4) : null),
+          inquiryType: inquiryTag,
+          stockType: stockTag,
+          longTerm: longTermTag,
+          closed: closeTag,
+          latestOffer: escapeHtml(latestPrice),
+          action: `<button class="secondary" data-edit-demand-id="${escapeHtml(d.id)}">编辑</button>`
+        };
+        return `
+          <tr>
+            ${salesQueryColOrder.map((k) => `<td>${cells[k] || ''}</td>`).join('')}
+          </tr>
+        `;
+      }).join('') || `<tr><td colspan="${salesQueryColOrder.length}" class="muted">暂无符合筛选条件的销售需求</td></tr>`;
+      bindSalesQueryEditButtons();
+
+      demandGeneratedText.value = String(state.lastDemandText || '');
+      renderCustomerMaster();
+      renderOfferMaster();
+      renderModelSeriesMaster();
+      renderDraggableHeader(salesQueryHeaderRow, salesQueryColumns, salesQueryColOrder, (dragKey, targetKey) => {
+        salesQueryColOrder = moveKey(salesQueryColOrder, dragKey, targetKey);
+        saveColumnOrder('salesQueryColOrderV1', salesQueryColOrder);
+        render();
+      });
+      renderDraggableHeader(offerQueryHeaderRow, offerQueryColumns, offerQueryColOrder, (dragKey, targetKey) => {
+        offerQueryColOrder = moveKey(offerQueryColOrder, dragKey, targetKey);
+        saveColumnOrder('offerQueryColOrderV1', offerQueryColOrder);
+        render();
+      });
+
+      const filteredDemands = getFilteredDemands();
+      const demandRows = filteredDemands.map((d, index) => {
+        const match = demandMatch.get(d.id);
+        const longTermTag = d.longTerm ? '<span class="pill warn">长期</span>' : '<span class="pill">短期</span>';
+        const inquiryTag = d.inquiryType === 'key' ? '<span class="pill bad">重点询盘</span>' : '<span class="pill">普通询盘</span>';
+        const stockTag = d.stockType === 'stock' ? '<span class="pill ok">库存</span>' : '<span class="pill">非库存</span>';
+        const hasOfferPrice = !!(match && match.latestPurchase && Number.isFinite(match.latestPurchase.unitPrice));
+        const hasSalesPrice = Number.isFinite(d.tp);
+        const rowClass = hasOfferPrice && hasSalesPrice
+          ? 'row-both-price'
+          : (hasOfferPrice ? 'row-offer-price' : '');
+        const rowPriority = hasOfferPrice && hasSalesPrice ? 2 : (hasOfferPrice ? 1 : 0);
+
+        let statusTag = '<span class="pill bad">未匹配</span>';
+        if (d.closed) {
+          statusTag = '<span class="pill">已关闭</span>';
+        } else if (match && match.canClose) {
+          statusTag = '<span class="pill ok">可关闭(已满足)</span>';
+        } else if (match && match.status === 'TP未填') {
+          statusTag = '<span class="pill warn">TP未填</span>';
+        } else if (match && match.status === '价格不满足(TP<=最新offer价格)') {
+          statusTag = '<span class="pill bad">价格不满足(TP<=最新offer价格)</span>';
+        } else if (match && match.status === '最新offer价格缺失') {
+          statusTag = '<span class="pill warn">最新offer价格缺失</span>';
+        }
+
+        const latestPrice = match && match.latestPurchase
+          ? `${Number.isFinite(match.latestPurchase.unitPrice) ? match.latestPurchase.unitPrice.toFixed(4) : '-'} @ ${match.latestPurchase.createdAt}`
+          : '<span class="muted">无</span>';
+
+        const action = d.closed
+          ? `<span class="muted">关闭于 ${d.closedAt || '-'}</span>`
+          : `<button class="close-btn" data-close-id="${d.id}" ${match && match.canClose ? '' : 'disabled'}>关闭需求</button>`;
+
+        const rowHtml = `
+          <tr class="${rowClass}">
+            <td>${d.id}</td>
+            <td>${d.createdAt}</td>
+            <td>${escapeHtml(d.customer)}</td>
+            <td>${escapeHtml(d.model)}</td>
+            <td>${escapeHtml(d.series || '-')}</td>
+            <td>${escapeHtml(d.materialInfo)}</td>
+            <td>${showCell(d.quantity)}</td>
+            <td>${showCell(Number.isFinite(d.tp) ? d.tp.toFixed(4) : null)}</td>
+            <td>${inquiryTag}</td>
+            <td>${stockTag}</td>
+            <td>${longTermTag}</td>
+            <td>${statusTag}</td>
+            <td>${latestPrice}</td>
+            <td>${action}</td>
+          </tr>
+        `;
+        return {
+          stockType: d.stockType,
+          createdAt: d.createdAt,
+          hasOfferPrice,
+          priority: rowPriority,
+          index,
+          html: rowHtml
+        };
+      });
+
+      const sortByCreatedAtDesc = (a, b) => compareTimeAsc(b.createdAt, a.createdAt);
+      const stockItems = demandRows
+        .filter((x) => x.stockType === 'stock')
+        .sort(sortByCreatedAtDesc);
+      const nonStockItems = demandRows
+        .filter((x) => x.stockType !== 'stock')
+        .sort(sortByCreatedAtDesc);
+      const stockRows = stockItems.map((x) => x.html);
+      const nonStockRows = nonStockItems.map((x) => x.html);
+      const stockHasOffer = stockItems.filter((x) => x.hasOfferPrice).length;
+      const nonStockHasOffer = nonStockItems.filter((x) => x.hasOfferPrice).length;
+      demandStockCount.textContent = String(stockRows.length);
+      demandNonStockCount.textContent = String(nonStockRows.length);
+      demandStockHasOfferCount.textContent = String(stockHasOffer);
+      demandStockNoOfferCount.textContent = String(stockRows.length - stockHasOffer);
+      demandNonStockHasOfferCount.textContent = String(nonStockHasOffer);
+      demandNonStockNoOfferCount.textContent = String(nonStockRows.length - nonStockHasOffer);
+      demandStockTbody.innerHTML = stockRows.join('') || '<tr><td colspan="14" class="muted">暂无库存需求数据（当前筛选条件）</td></tr>';
+      demandNonStockTbody.innerHTML = nonStockRows.join('') || '<tr><td colspan="14" class="muted">暂无非库存需求数据（当前筛选条件）</td></tr>';
+
+      const modelKeyword = String(offerModelSearch.value || '').trim().toUpperCase();
+      const filteredPurchases = purchases
+        .sort((a, b) => compareTimeAsc(b.createdAt, a.createdAt))
+        .filter((p) => {
+          if (!modelKeyword) return true;
+          return String(p.model || '').toUpperCase().includes(modelKeyword);
+        });
+
+      const purchaseRows = filteredPurchases
+        .map((p) => {
+          const cells = {
+            id: p.id,
+            createdAt: p.createdAt,
+            model: showCell(p.model),
+            series: escapeHtml(p.series || '-'),
+            materialInfo: escapeHtml(p.materialInfo),
+            quantity: showCell(p.quantity),
+            unitPrice: Number.isFinite(p.unitPrice) ? p.unitPrice.toFixed(4) : '<span class="muted">-</span>',
+            offer: escapeHtml(p.offer || '-'),
+            offerPerson: escapeHtml(p.offerPerson || '-'),
+            stockType: p.stockType === 'stock' ? '<span class="pill ok">库存</span>' : '<span class="pill">非库存</span>',
+            action: `<button class="secondary" data-edit-purchase-id="${escapeHtml(p.id)}">编辑</button>`
+          };
+          return `
+            <tr>
+              ${offerQueryColOrder.map((k) => `<td>${cells[k] || ''}</td>`).join('')}
+            </tr>
+          `;
+        });
+
+      purchaseTbody.innerHTML = purchaseRows.join('') || `<tr><td colspan="${offerQueryColOrder.length}" class="muted">暂无匹配的Offer历史数据</td></tr>`;
+      const trendKeyword = String(offerTrendModelInput.value || '').trim().toUpperCase();
+      if (!trendKeyword) {
+        offerTrendWrap.style.display = 'none';
+      } else {
+        offerTrendWrap.style.display = '';
+        const trendPurchases = purchases
+          .filter((p) => String(p.model || '').toUpperCase().includes(trendKeyword));
+        drawOfferTrendChart(trendPurchases, trendKeyword);
+      }
+
+      bindCloseButtons();
+      bindCustomerEditButtons();
+      bindPurchaseEditButtons();
+      bindCustomerDeleteButtons();
+      bindOfferPersonDeleteButtons();
+      bindModelSeriesDeleteButtons();
+      fillCustomerDatalist();
+      fillSeriesDatalist();
+      fillOfferPersonDatalist();
+    }
+
+    function renderCustomerMaster() {
+      const keyword = String(customerFilterName.value || '').trim().toUpperCase();
+      const filtered = (state.customers || []).filter((c) => {
+        if (!keyword) return true;
+        return String(c.name || '').toUpperCase().includes(keyword);
+      });
+      const rows = filtered.map((c) => {
+        const cardLink = c.cardImage
+          ? `<a href="${escapeHtml(c.cardImage)}" target="_blank" rel="noopener">查看名片</a>`
+          : '<span class="muted">-</span>';
+        return `
+          <tr>
+            <td>${showCell(c.id)}</td>
+            <td>${showCell(c.name)}</td>
+            <td>${showCell(c.window)}</td>
+            <td>${showCell(c.type)}</td>
+            <td>${showCell(c.productLine)}</td>
+            <td>${showCell(c.channel)}</td>
+            <td>${showCell(c.owner)}</td>
+            <td>${showCell(c.contactName)}</td>
+            <td>${showCell(c.contactPhone)}</td>
+            <td>${showCell(c.trait)}</td>
+            <td>${showCell(c.email)}</td>
+            <td>${showCell(c.officeAddress)}</td>
+            <td>${showCell(c.website)}</td>
+            <td>${showCell(c.region)}</td>
+            <td>${showCell(c.hasDeal)}</td>
+            <td>${cardLink}</td>
+            <td>
+              <button data-edit-customer-id="${escapeHtml(c.id)}">编辑</button>
+              <button data-delete-customer-id="${escapeHtml(c.id)}" class="secondary">删除</button>
+            </td>
+          </tr>
+        `;
+      });
+      customerTbody.innerHTML = rows.join('') || '<tr><td colspan="17" class="muted">暂无客户主数据</td></tr>';
+    }
+
+    function renderOfferMaster() {
+      const rows = state.offerPersons.map((p) => {
+        return `
+          <tr>
+            <td>${showCell(p.id)}</td>
+            <td>${showCell(p.name)}</td>
+            <td><button data-delete-offer-person-id="${escapeHtml(p.id)}" class="secondary">删除</button></td>
+          </tr>
+        `;
+      });
+      offerMasterTbody.innerHTML = rows.join('') || '<tr><td colspan="3" class="muted">暂无Offer主数据</td></tr>';
+    }
+
+    function renderModelSeriesMaster() {
+      const modelKeyword = String(modelSeriesFilterModel.value || '').trim().toUpperCase();
+      const seriesKeyword = String(modelSeriesFilterSeries.value || '').trim().toUpperCase();
+      const rows = (state.modelSeries || [])
+        .filter((r) => {
+          if (modelKeyword && !String(r.model || '').toUpperCase().includes(modelKeyword)) return false;
+          if (seriesKeyword && !String(r.series || '').toUpperCase().includes(seriesKeyword)) return false;
+          return true;
+        })
+        .map((r) => {
+        const sourceLabel = r.source === 'seed' ? '种子' : '手工';
+        return `
+          <tr>
+            <td>${showCell(r.id)}</td>
+            <td>${showCell(r.model)}</td>
+            <td>${showCell(r.series)}</td>
+            <td>${showCell(sourceLabel)}</td>
+            <td><button data-delete-model-series-id="${escapeHtml(r.id)}" class="secondary">删除</button></td>
+          </tr>
+        `;
+      });
+      modelSeriesTbody.innerHTML = rows.join('') || '<tr><td colspan="5" class="muted">暂无型号系列主数据</td></tr>';
+    }
+
+    function fillCustomerDatalist() {
+      const options = state.customers
+        .filter((c) => c.name)
+        .map((c) => `<option value="${escapeHtml(c.name)}"></option>`);
+      customerList.innerHTML = options.join('');
+    }
+
+    function fillSeriesDatalist() {
+      const seed = Array.isArray(window.SERIES_SEED) ? window.SERIES_SEED : [];
+      const fromModelMap = (state.modelSeries || []).map((x) => x.series || '');
+      const fromData = [
+        ...state.demands.map((d) => d.series || ''),
+        ...state.purchases.map((p) => p.series || '')
+      ];
+      const all = Array.from(new Set([...seed, ...fromModelMap, ...fromData].map((x) => String(x).trim()).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      seriesList.innerHTML = all.map((s) => `<option value="${escapeHtml(s)}"></option>`).join('');
+    }
+
+    function fillOfferPersonDatalist() {
+      const fromMaster = state.offerPersons.map((x) => x.name || '');
+      const fromData = state.purchases.map((x) => x.offerPerson || '');
+      const all = Array.from(new Set([...fromMaster, ...fromData].map((x) => String(x).trim()).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'en'));
+      offerPersonList.innerHTML = all.map((name) => `<option value="${escapeHtml(name)}"></option>`).join('');
+    }
+
+    function bindCloseButtons() {
+      document.querySelectorAll('button[data-close-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-close-id');
+          closeDemand(id);
+        });
+      });
+    }
+
+    function bindPurchaseEditButtons() {
+      document.querySelectorAll('button[data-edit-purchase-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-edit-purchase-id');
+          editPurchase(id);
+        });
+      });
+    }
+
+    function bindSalesQueryEditButtons() {
+      document.querySelectorAll('button[data-edit-demand-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-edit-demand-id');
+          editingSalesDemandId = id;
+          render();
+        });
+      });
+      document.querySelectorAll('button[data-demand-action="cancel"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          editingSalesDemandId = null;
+          render();
+        });
+      });
+      document.querySelectorAll('button[data-demand-action="save"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-demand-id');
+          saveEditedDemand(id);
+        });
+      });
+    }
+
+    function bindCustomerEditButtons() {
+      document.querySelectorAll('button[data-edit-customer-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-edit-customer-id');
+          const target = state.customers.find((c) => c.id === id);
+          if (!target) return;
+          customerEditId.value = String(target.id || '');
+          document.getElementById('customerName').value = String(target.name || '');
+          document.getElementById('customerWindow').value = String(target.window || '');
+          document.getElementById('customerType').value = String(target.type || '');
+          document.getElementById('customerProductLine').value = String(target.productLine || '');
+          document.getElementById('customerChannel').value = String(target.channel || '');
+          document.getElementById('customerOwner').value = String(target.owner || '');
+          document.getElementById('customerContact').value = String(target.contactName || '');
+          document.getElementById('customerPhone').value = String(target.contactPhone || '');
+          document.getElementById('customerTrait').value = String(target.trait || '');
+          document.getElementById('customerEmail').value = String(target.email || '');
+          document.getElementById('customerAddress').value = String(target.officeAddress || '');
+          document.getElementById('customerWebsite').value = String(target.website || '');
+          document.getElementById('customerRegion').value = String(target.region || '');
+          document.getElementById('customerHasDeal').value = String(target.hasDeal || '');
+          customerCardPath.value = String(target.cardImage || '');
+          customerCardUploadStatus.textContent = target.cardImage ? `已绑定：${target.cardImage}` : '未上传';
+          customerSubmitBtn.textContent = '保存客户';
+          customerCancelEditBtn.style.display = '';
+          setModuleView('customer');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+    }
+
+    function resetCustomerFormMode() {
+      customerForm.reset();
+      customerEditId.value = '';
+      customerCardPath.value = '';
+      customerCardUploadStatus.textContent = '未上传';
+      customerSubmitBtn.textContent = '新增客户';
+      customerCancelEditBtn.style.display = 'none';
+    }
+
+    function bindCustomerDeleteButtons() {
+      document.querySelectorAll('button[data-delete-customer-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-delete-customer-id');
+          const target = state.customers.find((c) => c.id === id);
+          if (!target) return;
+          if (!confirm(`确认删除客户：${target.name} ?`)) return;
+          state.customers = state.customers.filter((c) => c.id !== id);
+          persistAndRender();
+        });
+      });
+    }
+
+    function bindOfferPersonDeleteButtons() {
+      document.querySelectorAll('button[data-delete-offer-person-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-delete-offer-person-id');
+          const target = state.offerPersons.find((p) => p.id === id);
+          if (!target) return;
+          if (!confirm(`确认删除Offer人：${target.name} ?`)) return;
+          state.offerPersons = state.offerPersons.filter((p) => p.id !== id);
+          persistAndRender();
+        });
+      });
+    }
+
+    function bindModelSeriesDeleteButtons() {
+      document.querySelectorAll('button[data-delete-model-series-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-delete-model-series-id');
+          const target = state.modelSeries.find((x) => x.id === id);
+          if (!target) return;
+          if (!confirm(`确认删除型号系列关系：${target.model} -> ${target.series} ?`)) return;
+          state.modelSeries = state.modelSeries.filter((x) => x.id !== id);
+          persistAndRender();
+        });
+      });
+    }
+
+    function closeDemand(id) {
+      const { demandMatch } = computeAllocationAndLatestPrice();
+      const match = demandMatch.get(id);
+      if (!match || !match.canClose) {
+        alert('当前需求未满足，无法关闭。');
+        return;
+      }
+
+      const target = state.demands.find((d) => d.id === id);
+      if (!target || target.closed) return;
+
+      target.closed = true;
+      target.closedAt = nowMinuteString();
+      persistAndRender();
+    }
+
+    function editPurchase(id) {
+      const target = state.purchases.find((p) => p.id === id);
+      if (!target) return;
+
+      const model = prompt('型号（必填）', target.model || '');
+      if (model === null) return;
+      const modelText = String(model).trim();
+      if (!modelText) {
+        alert('型号不能为空。');
+        return;
+      }
+
+      const series = prompt('系列（可空）', target.series || '');
+      if (series === null) return;
+      const materialInfo = prompt('物料信息（可空）', target.materialInfo || '');
+      if (materialInfo === null) return;
+      const quantityText = prompt('Offer数量（可空）', target.quantity === null || target.quantity === undefined ? '' : String(target.quantity));
+      if (quantityText === null) return;
+      const priceText = prompt('Offer单价（可空）', target.unitPrice === null || target.unitPrice === undefined ? '' : String(target.unitPrice));
+      if (priceText === null) return;
+      const offer = prompt('Offer（可空）', target.offer || '');
+      if (offer === null) return;
+      const offerPerson = prompt('Offer人（可空）', target.offerPerson || '');
+      if (offerPerson === null) return;
+      const stockText = prompt('是否库存（输入：库存 或 非库存）', target.stockType === 'stock' ? '库存' : '非库存');
+      if (stockText === null) return;
+
+      const quantity = parseOptionalNumber(quantityText);
+      const unitPrice = parseOptionalNumber(priceText);
+      const stockType = String(stockText).trim() === '库存' ? 'stock' : 'non_stock';
+
+      target.model = modelText;
+      target.series = String(series).trim();
+      target.materialInfo = String(materialInfo).trim();
+      target.quantity = quantity;
+      target.unitPrice = unitPrice;
+      target.offer = String(offer).trim();
+      target.offerPerson = String(offerPerson).trim();
+      target.stockType = stockType;
+      target.createdAt = nowMinuteString();
+
+      const beforeGuessSeries = getSeriesByModel(target.model);
+      if (!target.series) {
+        const guessed = getSeriesByModel(target.model);
+        if (guessed) target.series = guessed;
+      }
+      if (!beforeGuessSeries && target.model && target.series) {
+        upsertModelSeries(target.model, target.series, 'manual');
+      }
+
+      persistAndRender();
+    }
+
+    function openSalesDemandEditor(id) {
+      const target = state.demands.find((d) => d.id === id);
+      if (!target) return;
+      editingSalesDemandId = id;
+      sqeTitle.textContent = `ID: ${id}（保存后录入时间将更新为当前时间）`;
+      sqeModel.value = target.model || '';
+      sqeCustomer.value = target.customer || '';
+      sqeSeries.value = target.series || '';
+      sqeMaterialInfo.value = target.materialInfo || '';
+      sqeQuantity.value = Number.isFinite(target.quantity) ? String(target.quantity) : '';
+      sqeTp.value = Number.isFinite(target.tp) ? String(target.tp) : '';
+      sqeInquiryType.value = target.inquiryType === 'key' ? 'key' : 'normal';
+      sqeStockType.value = target.stockType === 'stock' ? 'stock' : 'non_stock';
+      sqeLongTerm.value = target.longTerm ? 'true' : 'false';
+      sqeClosed.value = target.closed ? 'true' : 'false';
+      salesQueryEditPanel.style.display = '';
+    }
+
+    function saveEditedDemand(id) {
+      const target = state.demands.find((d) => d.id === id);
+      if (!target) return;
+
+      const row = salesQueryTbody.querySelector(`tr[data-demand-edit-row-id="${id}"]`);
+      if (!row) return;
+
+      const modelText = String((row.querySelector('[data-demand-field="model"]') || {}).value || '').trim();
+      if (!modelText) {
+        alert('型号不能为空。');
+        return;
+      }
+      const customerText = String((row.querySelector('[data-demand-field="customer"]') || {}).value || '').trim();
+      const seriesText = String((row.querySelector('[data-demand-field="series"]') || {}).value || '').trim();
+      const materialInfoText = String((row.querySelector('[data-demand-field="materialInfo"]') || {}).value || '').trim();
+      const quantityText = String((row.querySelector('[data-demand-field="quantity"]') || {}).value || '').trim();
+      const tpText = String((row.querySelector('[data-demand-field="tp"]') || {}).value || '').trim();
+      const inquiryTypeText = String((row.querySelector('[data-demand-field="inquiryType"]') || {}).value || 'normal');
+      const stockTypeText = String((row.querySelector('[data-demand-field="stockType"]') || {}).value || 'non_stock');
+      const longTermText = String((row.querySelector('[data-demand-field="longTerm"]') || {}).value || 'false');
+      const closedText = String((row.querySelector('[data-demand-field="closed"]') || {}).value || 'false');
+      const isClosed = closedText === 'true';
+
+      target.model = modelText;
+      target.customer = customerText;
+      target.series = seriesText;
+      target.materialInfo = materialInfoText;
+      target.quantity = parseOptionalNumber(quantityText);
+      target.tp = parseOptionalNumber(tpText);
+      target.inquiryType = inquiryTypeText === 'key' ? 'key' : 'normal';
+      target.stockType = stockTypeText === 'stock' ? 'stock' : 'non_stock';
+      target.longTerm = longTermText === 'true';
+      target.closed = isClosed;
+      target.closedAt = isClosed ? nowMinuteString() : null;
+      // Edited data becomes the latest effective record time.
+      target.createdAt = nowMinuteString();
+
+      const beforeGuessSeries = getSeriesByModel(target.model);
+      if (!target.series) {
+        const guessed = getSeriesByModel(target.model);
+        if (guessed) target.series = guessed;
+      }
+      if (!beforeGuessSeries && target.model && target.series) {
+        upsertModelSeries(target.model, target.series, 'manual');
+      }
+
+      editingSalesDemandId = null;
+      persistAndRender();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    render();
+    });
+  </script>
+</body>
+</html>

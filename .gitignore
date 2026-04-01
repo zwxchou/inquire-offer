@@ -1,0 +1,27 @@
+# Runtime
+__pycache__/
+*.pyc
+*.pyo
+*.pid
+*.log
+
+# Local data
+sales.db
+customer_cards/
+backups/
+
+# Local tunnel/cache
+.tunnel.pid
+.tunnel.url
+tunnel.out.log
+tunnel.err.log
+tools/
+
+# Local documents
+*.xlsx
+*.xls
+*.csv
+
+# OS/editor
+.DS_Store
+Thumbs.db

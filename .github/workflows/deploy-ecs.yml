@@ -13,18 +13,29 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ECS_HOST: ${{ secrets.ECS_HOST || vars.ECS_HOST }}
+      ECS_USER: ${{ secrets.ECS_USER || vars.ECS_USER }}
+      ECS_KNOWN_HOSTS: ${{ secrets.ECS_KNOWN_HOSTS || vars.ECS_KNOWN_HOSTS }}
+      ECS_SSH_PRIVATE_KEY: ${{ secrets.ECS_SSH_PRIVATE_KEY || secrets.ECS_SSH_KEY || vars.ECS_SSH_PRIVATE_KEY || vars.ECS_SSH_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate deploy inputs
+        run: |
+          set -euo pipefail
+          [ -n "${ECS_HOST:-}" ] || (echo "Missing ECS_HOST" && exit 1)
+          [ -n "${ECS_USER:-}" ] || (echo "Missing ECS_USER" && exit 1)
+          [ -n "${ECS_KNOWN_HOSTS:-}" ] || (echo "Missing ECS_KNOWN_HOSTS" && exit 1)
+          [ -n "${ECS_SSH_PRIVATE_KEY:-}" ] || (echo "Missing ECS_SSH_PRIVATE_KEY/ECS_SSH_KEY" && exit 1)
+
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ env.ECS_SSH_PRIVATE_KEY }}
 
       - name: Add known_hosts
-        env:
-          ECS_KNOWN_HOSTS: ${{ secrets.ECS_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
@@ -33,9 +44,6 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy on ECS
-        env:
-          ECS_HOST: ${{ secrets.ECS_HOST }}
-          ECS_USER: ${{ secrets.ECS_USER }}
         run: |
           set -euo pipefail
           ssh -o StrictHostKeyChecking=yes "${ECS_USER}@${ECS_HOST}" << 'EOF'

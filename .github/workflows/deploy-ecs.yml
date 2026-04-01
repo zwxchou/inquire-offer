@@ -13,6 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ECS_HOST
     env:
       ECS_HOST: ${{ secrets.ECS_HOST || vars.ECS_HOST }}
       ECS_USER: ${{ secrets.ECS_USER || vars.ECS_USER }}
@@ -27,7 +28,6 @@ jobs:
           set -euo pipefail
           [ -n "${ECS_HOST:-}" ] || (echo "Missing ECS_HOST" && exit 1)
           [ -n "${ECS_USER:-}" ] || (echo "Missing ECS_USER" && exit 1)
-          [ -n "${ECS_KNOWN_HOSTS:-}" ] || (echo "Missing ECS_KNOWN_HOSTS" && exit 1)
           [ -n "${ECS_SSH_PRIVATE_KEY:-}" ] || (echo "Missing ECS_SSH_PRIVATE_KEY/ECS_SSH_KEY" && exit 1)
 
       - name: Setup SSH key
@@ -40,7 +40,11 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "$ECS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          if [ -n "${ECS_KNOWN_HOSTS:-}" ]; then
+            echo "$ECS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$ECS_HOST" > ~/.ssh/known_hosts
+          fi
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy on ECS

@@ -31,15 +31,20 @@ jobs:
           [ -n "${ECS_SSH_PRIVATE_KEY:-}" ] || (echo "Missing ECS_SSH_PRIVATE_KEY/ECS_SSH_KEY" && exit 1)
 
       - name: Setup SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ env.ECS_SSH_PRIVATE_KEY }}
-
-      - name: Add known_hosts
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          if echo "${ECS_SSH_PRIVATE_KEY}" | grep -q "BEGIN .*PRIVATE KEY"; then
+            printf '%s\n' "${ECS_SSH_PRIVATE_KEY}" | sed 's/\r$//' > ~/.ssh/id_deploy
+          else
+            printf '%s' "${ECS_SSH_PRIVATE_KEY}" | base64 -d > ~/.ssh/id_deploy
+          fi
+          chmod 600 ~/.ssh/id_deploy
+
+      - name: Add known_hosts
+        run: |
+          set -euo pipefail
           if [ -n "${ECS_KNOWN_HOSTS:-}" ]; then
             echo "$ECS_KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
@@ -50,7 +55,7 @@ jobs:
       - name: Deploy on ECS
         run: |
           set -euo pipefail
-          ssh -o StrictHostKeyChecking=yes "${ECS_USER}@${ECS_HOST}" << 'EOF'
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes "${ECS_USER}@${ECS_HOST}" << 'EOF'
             set -euo pipefail
             cd /opt/sales-app/app
             sudo bash deploy/linux/release.sh main

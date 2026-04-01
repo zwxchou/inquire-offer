@@ -65,13 +65,72 @@ jobs:
             "${ECS_USER}@${ECS_HOST}" \
             "echo SSH_OK && whoami && hostname"
 
+      - name: Pack release
+        run: |
+          set -euo pipefail
+          tar -czf sales-release.tar.gz \
+            --exclude ".git" \
+            --exclude "__pycache__" \
+            --exclude ".venv" \
+            --exclude "*.pyc" \
+            --exclude "sales.db" \
+            --exclude "backups" \
+            --exclude "customer_cards" \
+            .
+
+      - name: Upload release
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes sales-release.tar.gz "${ECS_USER}@${ECS_HOST}:/tmp/sales-release.tar.gz"
+
       - name: Deploy on ECS
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes "${ECS_USER}@${ECS_HOST}" << 'EOF'
             set -euo pipefail
-            test -d /opt/sales-app/app
-            test -f /opt/sales-app/app/deploy/linux/release.sh
-            cd /opt/sales-app/app
-            sudo bash deploy/linux/release.sh main
+            REMOTE_APP_DIR="/opt/sales-app/app"
+            REMOTE_TEMP_DIR="/tmp"
+            APP_SERVICE="sales-app"
+            NGINX_SERVICE="nginx"
+            HEALTH_URL="http://127.0.0.1:5173/healthz"
+            RELEASE_ID="$(date +%Y%m%d_%H%M%S)"
+            REMOTE_EXTRACT_DIR="${REMOTE_TEMP_DIR}/sales-release-${RELEASE_ID}"
+            REMOTE_BACKUP_DIR="${REMOTE_TEMP_DIR}/sales-backup-${RELEASE_ID}"
+
+            mkdir -p "${REMOTE_APP_DIR}"
+            rm -rf "${REMOTE_EXTRACT_DIR}" "${REMOTE_BACKUP_DIR}"
+            mkdir -p "${REMOTE_EXTRACT_DIR}" "${REMOTE_BACKUP_DIR}"
+
+            rsync -a "${REMOTE_APP_DIR}/" "${REMOTE_BACKUP_DIR}/"
+            tar -xzf "${REMOTE_TEMP_DIR}/sales-release.tar.gz" -C "${REMOTE_EXTRACT_DIR}"
+            rsync -av --delete \
+              --exclude "sales.db" \
+              --exclude "backups/" \
+              --exclude "customer_cards/" \
+              "${REMOTE_EXTRACT_DIR}/" "${REMOTE_APP_DIR}/"
+
+            chown -R salesapp:salesapp "${REMOTE_APP_DIR}" || true
+            systemctl daemon-reload
+            systemctl restart "${APP_SERVICE}"
+            systemctl restart "${NGINX_SERVICE}"
+
+            OK=0
+            for i in 1 2 3 4 5; do
+              if curl -fsS "${HEALTH_URL}" >/dev/null; then
+                OK=1
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "${OK}" -ne 1 ]; then
+              echo "Health check failed, rollback..."
+              rsync -a --delete "${REMOTE_BACKUP_DIR}/" "${REMOTE_APP_DIR}/"
+              systemctl restart "${APP_SERVICE}" || true
+              systemctl restart "${NGINX_SERVICE}" || true
+              exit 1
+            fi
+
+            rm -rf "${REMOTE_EXTRACT_DIR}" "${REMOTE_BACKUP_DIR}"
+            rm -f "${REMOTE_TEMP_DIR}/sales-release.tar.gz"
           EOF

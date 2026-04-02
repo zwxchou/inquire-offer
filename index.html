@@ -21,7 +21,7 @@
 
     body {
       margin: 0;
-      padding: 24px;
+      padding: 12px;
       font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: clamp(15px, 0.9vw, 19px);
       background: linear-gradient(135deg, #eef4ff, #f8fbff 35%, #fdfefe);
@@ -29,8 +29,8 @@
     }
 
     .wrap {
-      width: calc(100vw - 48px);
-      max-width: 1880px;
+      width: 100%;
+      max-width: none;
       margin: 0 auto;
       display: grid;
       grid-template-columns: 260px 1fr;
@@ -238,6 +238,24 @@
     .row-both-price {
       background: #eafaf1;
     }
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .card-title-row h2 {
+      margin: 0;
+    }
+    .export-btn {
+      background: #0f766e;
+      font-size: 13px;
+      padding: 7px 11px;
+    }
+    .export-btn:hover {
+      background: #0b5f58;
+    }
 
     @media (max-width: 900px) {
       .wrap { grid-template-columns: 1fr; }
@@ -285,7 +303,10 @@
     </div>
 
     <div class="card module-sales" data-module-card="sales-dashboard">
-      <h2>销售数据看板</h2>
+      <div class="card-title-row">
+        <h2>销售数据看板</h2>
+        <button id="exportDashboardBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <div class="grid" style="margin-bottom: 8px;">
         <div class="field">
           <label>开始时间</label>
@@ -337,7 +358,10 @@
     </div>
 
     <div class="card module-customer" data-module-card="customer">
-      <h2>客户主数据维护</h2>
+      <div class="card-title-row">
+        <h2>客户主数据维护</h2>
+        <button id="exportCustomerBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <form id="customerForm" class="grid">
         <input id="customerEditId" type="hidden" />
         <div class="field">
@@ -461,7 +485,10 @@
     </div>
 
     <div class="card module-offer" data-module-card="offer-master">
-      <h2>Offer主数据维护</h2>
+      <div class="card-title-row">
+        <h2>Offer主数据维护</h2>
+        <button id="exportOfferMasterBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <form id="offerMasterForm" class="grid">
         <div class="field">
           <label>Offer人</label>
@@ -554,7 +581,10 @@
     </div>
 
     <div class="card module-sales" data-module-card="sales-demand-query">
-      <h2>销售需求查询（共 <span id="salesQueryCount">0</span> 条）</h2>
+      <div class="card-title-row">
+        <h2>销售需求查询（共 <span id="salesQueryCount">0</span> 条）</h2>
+        <button id="exportSalesQueryBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <div class="grid" style="margin-bottom: 12px;">
         <div class="field">
           <label>按客户筛选</label>
@@ -701,7 +731,13 @@
     </div>
 
     <div class="card module-sales" data-module-card="demand-list">
-      <h2>需求列表与匹配结果</h2>
+      <div class="card-title-row">
+        <h2>需求列表与匹配结果</h2>
+        <div style="display:flex; gap:8px;">
+          <button id="exportDemandStockBtn" type="button" class="secondary export-btn">导出库存Excel</button>
+          <button id="exportDemandNonStockBtn" type="button" class="secondary export-btn">导出非库存Excel</button>
+        </div>
+      </div>
       <div class="grid" style="margin-bottom: 12px;">
         <div class="field">
           <label>按型号筛选</label>
@@ -788,7 +824,10 @@
     </div>
 
     <div class="card module-sales" data-module-card="offer-query">
-      <h2>Offer列表</h2>
+      <div class="card-title-row">
+        <h2>Offer列表</h2>
+        <button id="exportOfferQueryBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <div class="grid" style="margin-bottom: 8px;">
         <div class="field">
           <label>按型号搜索历史Offer</label>
@@ -814,7 +853,10 @@
     </div>
 
     <div class="card module-model-series" data-module-card="model-series">
-      <h2>型号系列主数据</h2>
+      <div class="card-title-row">
+        <h2>型号系列主数据</h2>
+        <button id="exportModelSeriesBtn" type="button" class="secondary export-btn">导出Excel</button>
+      </div>
       <form id="modelSeriesForm" class="grid">
         <div class="field">
           <label>型号</label>
@@ -1002,6 +1044,14 @@
     const purchaseStockType = document.getElementById('purchaseStockType');
     const clearDataBtn = document.getElementById('clearDataBtn');
     const offerTrendCanvas = document.getElementById('offerTrendCanvas');
+    const exportDashboardBtn = document.getElementById('exportDashboardBtn');
+    const exportCustomerBtn = document.getElementById('exportCustomerBtn');
+    const exportOfferMasterBtn = document.getElementById('exportOfferMasterBtn');
+    const exportSalesQueryBtn = document.getElementById('exportSalesQueryBtn');
+    const exportDemandStockBtn = document.getElementById('exportDemandStockBtn');
+    const exportDemandNonStockBtn = document.getElementById('exportDemandNonStockBtn');
+    const exportOfferQueryBtn = document.getElementById('exportOfferQueryBtn');
+    const exportModelSeriesBtn = document.getElementById('exportModelSeriesBtn');
 
     salesQueryColOrder = loadColumnOrder('salesQueryColOrderV1', salesQueryColumns.map((x) => x.key));
     offerQueryColOrder = loadColumnOrder('offerQueryColOrderV1', offerQueryColumns.map((x) => x.key));
@@ -1122,6 +1172,14 @@
       }
     });
     startHealthPolling();
+    exportDashboardBtn.addEventListener('click', () => exportTableByTbodyId('dashboardDetailTbody', '销售数据看板明细'));
+    exportCustomerBtn.addEventListener('click', () => exportTableByTbodyId('customerTbody', '客户主数据'));
+    exportOfferMasterBtn.addEventListener('click', () => exportTableByTbodyId('offerMasterTbody', 'Offer主数据'));
+    exportSalesQueryBtn.addEventListener('click', () => exportTableByTbodyId('salesQueryTbody', '销售需求查询'));
+    exportDemandStockBtn.addEventListener('click', () => exportTableByTbodyId('demandStockTbody', '库存需求匹配结果'));
+    exportDemandNonStockBtn.addEventListener('click', () => exportTableByTbodyId('demandNonStockTbody', '非库存需求匹配结果'));
+    exportOfferQueryBtn.addEventListener('click', () => exportTableByTbodyId('purchaseTbody', 'Offer列表'));
+    exportModelSeriesBtn.addEventListener('click', () => exportTableByTbodyId('modelSeriesTbody', '型号系列主数据'));
     addDemandRowBtn.addEventListener('click', () => addExtraDemandRow());
 
     customerForm.addEventListener('submit', async (e) => {
@@ -2715,6 +2773,74 @@
       const all = Array.from(new Set([...fromMaster, ...fromData].map((x) => String(x).trim()).filter(Boolean)))
         .sort((a, b) => a.localeCompare(b, 'en'));
       offerPersonList.innerHTML = all.map((name) => `<option value="${escapeHtml(name)}"></option>`).join('');
+    }
+
+    function sanitizeExcelCell(text) {
+      const raw = String(text == null ? '' : text).trim();
+      if (/^[=+\-@]/.test(raw)) {
+        return `'${raw}`;
+      }
+      return raw;
+    }
+
+    function exportTableByTbodyId(tbodyId, filePrefix) {
+      if (typeof XLSX === 'undefined') {
+        alert('导出组件未加载，请检查网络后重试。');
+        return;
+      }
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) {
+        alert('未找到导出表格。');
+        return;
+      }
+      const table = tbody.closest('table');
+      if (!table) {
+        alert('未找到导出表格。');
+        return;
+      }
+      const cloned = table.cloneNode(true);
+      const headerCells = Array.from(cloned.querySelectorAll('thead th'));
+      const removeIndexes = [];
+      headerCells.forEach((th, idx) => {
+        const text = String(th.textContent || '').replace(/\s+/g, '').trim();
+        if (text === '操作') removeIndexes.push(idx);
+      });
+      if (removeIndexes.length) {
+        const rows = Array.from(cloned.querySelectorAll('tr'));
+        rows.forEach((tr) => {
+          removeIndexes.slice().reverse().forEach((idx) => {
+            const cells = tr.children;
+            if (cells && cells[idx]) tr.removeChild(cells[idx]);
+          });
+        });
+      }
+      cloned.querySelectorAll('button,input,select,textarea').forEach((el) => {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'button') {
+          el.remove();
+          return;
+        }
+        const value = el.value || '';
+        const textNode = document.createTextNode(value);
+        el.parentNode.replaceChild(textNode, el);
+      });
+
+      const wb = XLSX.utils.table_to_book(cloned, { sheet: 'Sheet1', raw: false });
+      const ws = wb.Sheets['Sheet1'];
+      if (ws && ws['!ref']) {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let r = range.s.r + 1; r <= range.e.r; r += 1) {
+          for (let c = range.s.c; c <= range.e.c; c += 1) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            const cell = ws[addr];
+            if (!cell) continue;
+            cell.v = sanitizeExcelCell(cell.v);
+            cell.t = 's';
+          }
+        }
+      }
+      const time = nowMinuteString().replace(/[: ]/g, '-');
+      XLSX.writeFile(wb, `${filePrefix}_${time}.xlsx`);
     }
 
     function bindCloseButtons() {

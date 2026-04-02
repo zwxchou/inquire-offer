@@ -1,4 +1,5 @@
 import base64
+import hmac
 import json
 import os
 import shutil
@@ -28,6 +29,10 @@ BACKUP_DIR = ROOT / "backups"
 DAILY_DIR = BACKUP_DIR / "daily"
 LATEST_DIR = BACKUP_DIR / "latest"
 CARD_DIR = ROOT / "customer_cards"
+AUTH_USER = os.environ.get("SALES_AUTH_USER", "admin")
+AUTH_PASS = os.environ.get("SALES_AUTH_PASS", "Sales@2026")
+AUTH_REALM = os.environ.get("SALES_AUTH_REALM", "SalesQuoteSystem")
+AUTH_EXEMPT_PATHS = set(["/healthz"])
 
 
 def ensure_dirs():
@@ -219,6 +224,51 @@ class AppHandler(SimpleHTTPRequestHandler):
         if with_body:
             self.wfile.write(raw)
 
+    def _send_plain(self, status_code, body_text):
+        raw = body_text.encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def _is_authorized(self):
+        auth_header = self.headers.get("Authorization", "")
+        if not auth_header.startswith("Basic "):
+            return False
+        token = auth_header[6:].strip()
+        if not token:
+            return False
+        try:
+            decoded = base64.b64decode(token).decode("utf-8")
+        except Exception:
+            return False
+        if ":" not in decoded:
+            return False
+        username, password = decoded.split(":", 1)
+        return hmac.compare_digest(username, AUTH_USER) and hmac.compare_digest(password, AUTH_PASS)
+
+    def _require_auth(self, path):
+        if path in AUTH_EXEMPT_PATHS:
+            return True
+        if self._is_authorized():
+            return True
+        self.send_response(HTTPStatus.UNAUTHORIZED)
+        self.send_header("WWW-Authenticate", 'Basic realm="%s", charset="UTF-8"' % AUTH_REALM)
+        if path.startswith("/api/"):
+            body = json.dumps({"ok": False, "error": "unauthorized"}, ensure_ascii=False).encode("utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            body = "Unauthorized".encode("utf-8")
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        return False
+
     def _safe(self, fn):
         try:
             fn()
@@ -233,6 +283,8 @@ class AppHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         def run():
             path = urlparse(self.path).path
+            if not self._require_auth(path):
+                return
             if path == "/api/state":
                 self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()})
                 return
@@ -248,6 +300,8 @@ class AppHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         def run():
             path = urlparse(self.path).path
+            if not self._require_auth(path):
+                return
             if path == "/api/state":
                 self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()}, with_body=False)
                 return
@@ -263,6 +317,8 @@ class AppHandler(SimpleHTTPRequestHandler):
     def do_PUT(self):
         def run():
             path = urlparse(self.path).path
+            if not self._require_auth(path):
+                return
             if path != "/api/state":
                 self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
                 return
@@ -289,6 +345,8 @@ class AppHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         def run():
             path = urlparse(self.path).path
+            if not self._require_auth(path):
+                return
             if path != "/api/upload-card":
                 self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
                 return
@@ -312,6 +370,9 @@ class AppHandler(SimpleHTTPRequestHandler):
         self._safe(run)
 
     def do_OPTIONS(self):
+        path = urlparse(self.path).path
+        if not self._require_auth(path):
+            return
         self.send_response(HTTPStatus.NO_CONTENT)
         self.send_header("Allow", "GET,PUT,POST,OPTIONS,HEAD")
         self.end_headers()

@@ -9,6 +9,8 @@ Group=salesapp
 WorkingDirectory=/opt/sales-app/app
 Environment=SALES_PORT=5173
 Environment=TZ=Asia/Shanghai
+Environment=SALES_AUTH_USER=admin
+Environment=SALES_AUTH_PASS=Sales@2026
 ExecStart=/usr/bin/python3 /opt/sales-app/app/backend.py
 Restart=always
 RestartSec=3
@@ -19,4 +21,3 @@ ReadWritePaths=/opt/sales-app/app
 
 [Install]
 WantedBy=multi-user.target
-

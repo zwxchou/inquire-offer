@@ -238,12 +238,6 @@
     .row-both-price {
       background: #eafaf1;
     }
-    body[data-module="sales-demand-query"] [data-module-card="sales-demand-query"] .scroll {
-      max-height: calc(100vh - 280px);
-    }
-    body[data-module="offer-query"] [data-module-card="offer-query"] .scroll {
-      max-height: calc(100vh - 260px);
-    }
     .card-title-row {
       display: flex;
       align-items: center;
@@ -269,10 +263,6 @@
       .field, .field.wide { grid-column: span 6; }
       .demand-row { grid-template-columns: 1fr; }
       .offer-row { grid-template-columns: 1fr; }
-      body[data-module="sales-demand-query"] [data-module-card="sales-demand-query"] .scroll,
-      body[data-module="offer-query"] [data-module-card="offer-query"] .scroll {
-        max-height: 52vh;
-      }
     }
 
     @media (max-width: 620px) {
@@ -1182,6 +1172,7 @@
       }
     });
     startHealthPolling();
+    window.addEventListener('resize', () => requestAnimationFrame(updateViewportTableHeights));
     exportDashboardBtn.addEventListener('click', () => exportTableByTbodyId('dashboardDetailTbody', '销售数据看板明细'));
     exportCustomerBtn.addEventListener('click', () => exportTableByTbodyId('customerTbody', '客户主数据'));
     exportOfferMasterBtn.addEventListener('click', () => exportTableByTbodyId('offerMasterTbody', 'Offer主数据'));
@@ -1662,6 +1653,31 @@
       }
     }
 
+    function updateViewportTableHeights() {
+      const currentModule = document.body.getAttribute('data-module');
+      const configs = [
+        { module: 'sales-demand-query', card: '[data-module-card="sales-demand-query"]' },
+        { module: 'offer-query', card: '[data-module-card="offer-query"]' }
+      ];
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 900;
+      configs.forEach((cfg) => {
+        const card = document.querySelector(cfg.card);
+        if (!card) return;
+        const scroll = card.querySelector('.scroll');
+        if (!scroll) return;
+        if (cfg.module !== currentModule || card.style.display === 'none') {
+          scroll.style.height = '';
+          scroll.style.maxHeight = '';
+          return;
+        }
+        const rect = scroll.getBoundingClientRect();
+        const bottomGap = window.innerWidth <= 900 ? 12 : 18;
+        const h = Math.max(220, Math.floor(viewportHeight - rect.top - bottomGap));
+        scroll.style.height = `${h}px`;
+        scroll.style.maxHeight = `${h}px`;
+      });
+    }
+
     function setModuleView(moduleName) {
       document.body.setAttribute('data-module', moduleName);
       if (moduleName !== 'sales-demand-query') {
@@ -1679,6 +1695,7 @@
       document.querySelectorAll('[data-module-card]').forEach((card) => {
         card.style.display = card.getAttribute('data-module-card') === moduleName ? '' : 'none';
       });
+      requestAnimationFrame(updateViewportTableHeights);
     }
 
     function assignCustomerIds(customers) {
@@ -2681,6 +2698,7 @@
       fillCustomerDatalist();
       fillSeriesDatalist();
       fillOfferPersonDatalist();
+      requestAnimationFrame(updateViewportTableHeights);
     }
 
     function renderCustomerMaster() {

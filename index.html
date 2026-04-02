@@ -238,6 +238,12 @@
     .row-both-price {
       background: #eafaf1;
     }
+    body[data-module="sales-demand-query"] [data-module-card="sales-demand-query"] .scroll {
+      max-height: calc(100vh - 280px);
+    }
+    body[data-module="offer-query"] [data-module-card="offer-query"] .scroll {
+      max-height: calc(100vh - 260px);
+    }
     .card-title-row {
       display: flex;
       align-items: center;
@@ -263,6 +269,10 @@
       .field, .field.wide { grid-column: span 6; }
       .demand-row { grid-template-columns: 1fr; }
       .offer-row { grid-template-columns: 1fr; }
+      body[data-module="sales-demand-query"] [data-module-card="sales-demand-query"] .scroll,
+      body[data-module="offer-query"] [data-module-card="offer-query"] .scroll {
+        max-height: 52vh;
+      }
     }
 
     @media (max-width: 620px) {

@@ -2,6 +2,7 @@ param(
     [string]$ServerIp = "47.112.197.85",
     [int]$SshPort = 22,
     [string]$ServerUser = "root",
+    [string]$SshKeyPath = "",
     [string]$RemoteAppDir = "/opt/sales-app/app",
     [string]$RemoteTempDir = "/tmp",
     [string]$AppService = "sales-app",
@@ -22,7 +23,11 @@ $remoteBackupDir = "$RemoteTempDir/sales-backup-$releaseId"
 
 function Invoke-Remote {
     param([string]$Command)
-    ssh -o ConnectTimeout=15 -p $SshPort $remote $Command
+    if ([string]::IsNullOrWhiteSpace($SshKeyPath)) {
+        ssh -o ConnectTimeout=15 -p $SshPort $remote $Command
+    } else {
+        ssh -i $SshKeyPath -o ConnectTimeout=15 -p $SshPort $remote $Command
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Remote command failed: $Command"
     }
@@ -41,7 +46,11 @@ tar -czf $localArchive `
   -C $projectRoot .
 
 Write-Host "==> 2/7 Upload archive"
-scp -P $SshPort $localArchive "${remote}:${RemoteTempDir}/$archiveName"
+if ([string]::IsNullOrWhiteSpace($SshKeyPath)) {
+    scp -P $SshPort $localArchive "${remote}:${RemoteTempDir}/$archiveName"
+} else {
+    scp -i $SshKeyPath -P $SshPort $localArchive "${remote}:${RemoteTempDir}/$archiveName"
+}
 if ($LASTEXITCODE -ne 0) { throw "Upload failed." }
 
 Write-Host "==> 3/7 Backup remote app"

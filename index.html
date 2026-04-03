@@ -445,6 +445,7 @@
         </div>
         <div class="actions">
           <button id="importCustomerBtn" type="button" class="secondary">导入文件</button>
+          <button id="downloadAllCardsBtn" type="button" class="secondary">下载全部名片</button>
         </div>
       </div>
       <div class="grid" style="margin-top: 8px;">
@@ -969,6 +970,7 @@
     const clearModelSeriesFilterBtn = document.getElementById('clearModelSeriesFilterBtn');
     const customerFile = document.getElementById('customerFile');
     const importCustomerBtn = document.getElementById('importCustomerBtn');
+    const downloadAllCardsBtn = document.getElementById('downloadAllCardsBtn');
     const customerFilterName = document.getElementById('customerFilterName');
     const clearCustomerFilterBtn = document.getElementById('clearCustomerFilterBtn');
     const customerCardFile = document.getElementById('customerCardFile');
@@ -1104,6 +1106,13 @@
     clearCustomerFilterBtn.addEventListener('click', () => {
       customerFilterName.value = '';
       render();
+    });
+    downloadAllCardsBtn.addEventListener('click', async () => {
+      try {
+        await downloadAllCustomerCards();
+      } catch (err) {
+        alert(`下载名片失败：${err.message || err}`);
+      }
     });
     customerCardFile.addEventListener('change', () => {
       customerCardPath.value = '';
@@ -2038,6 +2047,31 @@
         throw new Error(data.error || `HTTP ${res.status}`);
       }
       return String(data.imagePath);
+    }
+
+    async function downloadAllCustomerCards() {
+      const res = await fetch('/api/download-cards', { method: 'GET' });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const disposition = String(res.headers.get('Content-Disposition') || '');
+      let filename = '';
+      const match = disposition.match(/filename="?([^"]+)"?/i);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+      if (!filename) {
+        filename = `customer_cards_${nowMinuteString().replace(/[: ]/g, '-')}.zip`;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function buildDemandInquiryText(demands, common) {

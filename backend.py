@@ -1,5 +1,6 @@
 import base64
 import hmac
+import io
 import json
 import os
 import shutil
@@ -7,6 +8,7 @@ import sqlite3
 import threading
 import time
 import traceback
+import zipfile
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
@@ -29,6 +31,7 @@ BACKUP_DIR = ROOT / "backups"
 DAILY_DIR = BACKUP_DIR / "daily"
 LATEST_DIR = BACKUP_DIR / "latest"
 CARD_DIR = ROOT / "customer_cards"
+CARD_MAX_BYTES = int(os.environ.get("SALES_CARD_MAX_BYTES", str(20 * 1024 * 1024)))
 AUTH_USER = os.environ.get("SALES_AUTH_USER", "admin")
 AUTH_PASS = os.environ.get("SALES_AUTH_PASS", "Sales@2026")
 AUTH_REALM = os.environ.get("SALES_AUTH_REALM", "SalesQuoteSystem")
@@ -160,10 +163,23 @@ def save_card_image(customer_id, filename, content_b64):
         data = base64.b64decode(content_b64, validate=True)
     except Exception:
         raise ValueError("invalid base64 image content")
-    if len(data) > 8 * 1024 * 1024:
-        raise ValueError("image too large (max 8MB)")
+    if len(data) > CARD_MAX_BYTES:
+        raise ValueError("image too large (max %dMB)" % max(1, CARD_MAX_BYTES // (1024 * 1024)))
     target.write_bytes(data)
     return "/customer_cards/%s" % final_name
+
+
+def build_cards_zip_bytes():
+    ensure_dirs()
+    files = [p for p in CARD_DIR.glob("*") if p.is_file()]
+    files.sort(key=lambda p: p.name.lower())
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        if not files:
+            zf.writestr("README.txt", "No card images found.")
+        for p in files:
+            zf.write(str(p), arcname=p.name)
+    return buf.getvalue()
 
 
 def health_report():
@@ -220,6 +236,16 @@ class AppHandler(SimpleHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        if with_body:
+            self.wfile.write(raw)
+
+    def _send_bytes(self, status_code, raw, content_type, filename=None, with_body=True):
+        self.send_response(status_code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(raw)))
+        if filename:
+            self.send_header("Content-Disposition", 'attachment; filename="%s"' % filename)
         self.end_headers()
         if with_body:
             self.wfile.write(raw)
@@ -288,6 +314,11 @@ class AppHandler(SimpleHTTPRequestHandler):
             if path == "/api/state":
                 self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()})
                 return
+            if path == "/api/download-cards":
+                payload = build_cards_zip_bytes()
+                filename = "customer_cards_%s.zip" % datetime.now().strftime("%Y%m%d_%H%M%S")
+                self._send_bytes(HTTPStatus.OK, payload, "application/zip", filename=filename)
+                return
             if path == "/healthz":
                 report = health_report()
                 status = HTTPStatus.OK if report["ok"] else HTTPStatus.SERVICE_UNAVAILABLE
@@ -304,6 +335,11 @@ class AppHandler(SimpleHTTPRequestHandler):
                 return
             if path == "/api/state":
                 self._send_json(HTTPStatus.OK, {"ok": True, "state": load_state()}, with_body=False)
+                return
+            if path == "/api/download-cards":
+                payload = build_cards_zip_bytes()
+                filename = "customer_cards_%s.zip" % datetime.now().strftime("%Y%m%d_%H%M%S")
+                self._send_bytes(HTTPStatus.OK, payload, "application/zip", filename=filename, with_body=False)
                 return
             if path == "/healthz":
                 report = health_report()

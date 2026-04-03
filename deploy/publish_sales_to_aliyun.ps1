@@ -62,7 +62,7 @@ $syncCmd = "set -e; rm -rf '$remoteExtractDir'; mkdir -p '$remoteExtractDir'; ta
 Invoke-Remote $syncCmd
 
 Write-Host "==> 5/7 Set permissions and restart"
-$restartCmd = "set -e; chown -R salesapp:salesapp '$RemoteAppDir'; systemctl daemon-reload; systemctl restart $AppService; systemctl restart $NginxService"
+$restartCmd = "set -e; chown -R salesapp:salesapp '$RemoteAppDir'; install -m 0644 '$RemoteAppDir/deploy/linux/sales-app.service' '/etc/systemd/system/sales-app.service'; install -m 0644 '$RemoteAppDir/deploy/linux/nginx-sales.conf' '/etc/nginx/conf.d/sales.conf'; nginx -t; systemctl daemon-reload; systemctl restart $AppService; systemctl restart $NginxService"
 Invoke-Remote $restartCmd
 
 Write-Host "==> 6/7 Health check"
